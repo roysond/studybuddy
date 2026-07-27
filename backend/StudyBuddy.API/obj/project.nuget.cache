@@ -1,0 +1,52 @@
+{
+  "version": 2,
+  "dgSpecHash": "AXMsn2apWio=",
+  "success": true,
+  "projectFilePath": "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.API/StudyBuddy.API.csproj",
+  "expectedPackageFiles": [
+    "/Users/roysondsouza/.nuget/packages/azure.ai.openai/2.9.0-beta.1/azure.ai.openai.2.9.0-beta.1.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/azure.core/1.51.1/azure.core.1.51.1.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.aspnetcore.openapi/10.0.10/microsoft.aspnetcore.openapi.10.0.10.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.bcl.asyncinterfaces/10.0.2/microsoft.bcl.asyncinterfaces.10.0.2.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.bcl.hashcode/1.1.1/microsoft.bcl.hashcode.1.1.1.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.entityframeworkcore/10.0.4/microsoft.entityframeworkcore.10.0.4.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.entityframeworkcore.abstractions/10.0.4/microsoft.entityframeworkcore.abstractions.10.0.4.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.entityframeworkcore.analyzers/10.0.4/microsoft.entityframeworkcore.analyzers.10.0.4.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.entityframeworkcore.relational/10.0.4/microsoft.entityframeworkcore.relational.10.0.4.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.extensions.ai/10.5.0/microsoft.extensions.ai.10.5.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.extensions.ai.abstractions/10.5.0/microsoft.extensions.ai.abstractions.10.5.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.extensions.ai.openai/10.5.0/microsoft.extensions.ai.openai.10.5.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.extensions.vectordata.abstractions/10.1.0/microsoft.extensions.vectordata.abstractions.10.1.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.openapi/2.0.0/microsoft.openapi.2.0.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.semantickernel/1.78.0/microsoft.semantickernel.1.78.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.semantickernel.abstractions/1.78.0/microsoft.semantickernel.abstractions.1.78.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.semantickernel.connectors.azureopenai/1.78.0/microsoft.semantickernel.connectors.azureopenai.1.78.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.semantickernel.connectors.openai/1.78.0/microsoft.semantickernel.connectors.openai.1.78.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/microsoft.semantickernel.core/1.78.0/microsoft.semantickernel.core.1.78.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/npgsql/10.0.3/npgsql.10.0.3.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/npgsql.entityframeworkcore.postgresql/10.0.3/npgsql.entityframeworkcore.postgresql.10.0.3.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/openai/2.10.0/openai.2.10.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/opentelemetry/1.17.0/opentelemetry.1.17.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/opentelemetry.api/1.17.0/opentelemetry.api.1.17.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/opentelemetry.api.providerbuilderextensions/1.17.0/opentelemetry.api.providerbuilderextensions.1.17.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/opentelemetry.exporter.console/1.17.0/opentelemetry.exporter.console.1.17.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/opentelemetry.extensions.hosting/1.17.0/opentelemetry.extensions.hosting.1.17.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/system.clientmodel/1.10.0/system.clientmodel.1.10.0.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/system.memory.data/10.0.3/system.memory.data.10.0.3.nupkg.sha512",
+    "/Users/roysondsouza/.nuget/packages/system.numerics.tensors/10.0.6/system.numerics.tensors.10.0.6.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "message": "Package 'Microsoft.OpenApi' 2.0.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-v5pm-xwqc-g5wc",
+      "projectPath": "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.API/StudyBuddy.API.csproj",
+      "warningLevel": 1,
+      "filePath": "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.API/StudyBuddy.API.csproj",
+      "libraryId": "Microsoft.OpenApi",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    }
+  ]
+}

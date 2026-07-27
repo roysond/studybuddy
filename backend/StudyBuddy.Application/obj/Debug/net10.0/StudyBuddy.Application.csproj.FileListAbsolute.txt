@@ -1,0 +1,16 @@
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/bin/Debug/net10.0/StudyBuddy.Application.deps.json
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/bin/Debug/net10.0/StudyBuddy.Application.dll
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/bin/Debug/net10.0/StudyBuddy.Application.pdb
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/bin/Debug/net10.0/StudyBuddy.Domain.dll
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/bin/Debug/net10.0/StudyBuddy.Domain.pdb
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/obj/Debug/net10.0/StudyBuddy.Application.csproj.AssemblyReference.cache
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/obj/Debug/net10.0/StudyBuddy.Application.GeneratedMSBuildEditorConfig.editorconfig
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/obj/Debug/net10.0/StudyBuddy.Application.AssemblyInfoInputs.cache
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/obj/Debug/net10.0/StudyBuddy.Application.AssemblyInfo.cs
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/obj/Debug/net10.0/StudyBuddy.Application.csproj.CoreCompileInputs.cache
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/obj/Debug/net10.0/StudyBuddy.Application.sourcelink.json
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/obj/Debug/net10.0/StudyBud.8CBEB2DC.Up2Date
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/obj/Debug/net10.0/StudyBuddy.Application.dll
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/obj/Debug/net10.0/refint/StudyBuddy.Application.dll
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/obj/Debug/net10.0/StudyBuddy.Application.pdb
+/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/obj/Debug/net10.0/ref/StudyBuddy.Application.dll

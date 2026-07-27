@@ -27,7 +27,10 @@ frontend/.env.production
 .env
 .env.local
 *.env
+!.env.example
+!backend/.env.example
 appsettings.Development.json
+**/appsettings.Development.json
 
 # ==========================================
 # OS Files

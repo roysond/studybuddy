@@ -1,0 +1,10 @@
+@StudyBuddy.API_HostAddress = http://localhost:5017
+
+### Explain a concept
+POST {{StudyBuddy.API_HostAddress}}/api/study/explain
+Content-Type: application/json
+
+{
+  "userMessage": "What is dependency injection?",
+  "studyMaterial": "Dependency injection is a design pattern where a class receives its dependencies from an external source rather than creating them itself. This makes code more testable and loosely coupled."
+}
