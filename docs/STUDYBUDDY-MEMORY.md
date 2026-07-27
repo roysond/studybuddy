@@ -45,11 +45,11 @@
 - ElevenLabs reads the feedback aloud *(not built yet)*
 - Goal: Active recall — the fastest way to retain information
 
-### Mode 3 — Summarise (not started)
+### Mode 3 — Summarise ✅ (backend live)
 - User pastes a full section of study material
-- Claude condenses it into key points and takeaways
+- Claude condenses it into the 5 most important key points
 - Summary appears as text on screen
-- ElevenLabs reads the summary aloud
+- ElevenLabs reads the summary aloud *(not built yet)*
 - Goal: Digest large sections quickly without losing the important details
 
 ---
@@ -147,7 +147,7 @@ SK OpenTelemetry traces/metrics printed to console
 JSON { explanation: "..." }
 ```
 
-**Not yet in the path:** SK Planner, SummarisePlugin, ElevenLabs TTS, React UI.
+**Not yet in the path:** SK Planner, ElevenLabs TTS, React UI.
 
 ### What is implemented today (Quiz, Phase 2 start):
 
@@ -200,10 +200,16 @@ JSON { evaluation: "..." }
 - Registered on the Kernel via `kernelBuilder.Plugins.AddFromType<QuizPlugin>()`; `IQuizService` registered `AddScoped` in `Program.cs`
 - Explain mode was left untouched during this build
 
-**SummarisePlugin** ⏳
-- Takes: pasted section of study material
-- Prompt instruction: "Summarise this into the 5 most important points a student needs to remember. Be concise but complete."
-- Returns: bulleted key points
+**SummarisePlugin** ✅
+- Location: `backend/StudyBuddy.Application/Plugins/SummarisePlugin.cs`
+- Prompt: `backend/StudyBuddy.Application/Prompts/SummarisePromptTemplate.cs`
+- Takes: `studyMaterial` only (single-step, same shape as Explain)
+- Instruction: condense into exactly the 5 most important points, grounded strictly in the material, no invented facts
+- Decorated with `[KernelFunction("Summarise")]` and `[Description(...)]`
+- Service: `ISummariseService` / `SummariseService` — mirrors `IExplainService` / `ExplainService`
+- Endpoint: `POST /api/study/summarise` on `StudyController`
+- Registered on the Kernel via `kernelBuilder.Plugins.AddFromType<SummarisePlugin>()`; `ISummariseService` registered `AddScoped` in `Program.cs`
+- Returns: 5 bulleted key points
 
 ---
 
@@ -222,12 +228,13 @@ backend/
 │   ├── appsettings.json                  # safe defaults (no secrets)
 │   └── appsettings.Development.json      # LOCAL ONLY — gitignored
 ├── StudyBuddy.Application/               # Use cases / SK surface
-│   ├── Plugins/ExplainPlugin.cs, QuizPlugin.cs
-│   ├── Prompts/ExplainPromptTemplate.cs, QuizPromptTemplates.cs
-│   ├── Interfaces/IExplainService.cs, IQuizService.cs
-│   ├── Services/ExplainService.cs, QuizService.cs
+│   ├── Plugins/ExplainPlugin.cs, QuizPlugin.cs, SummarisePlugin.cs
+│   ├── Prompts/ExplainPromptTemplate.cs, QuizPromptTemplates.cs, SummarisePromptTemplate.cs
+│   ├── Interfaces/IExplainService.cs, IQuizService.cs, ISummariseService.cs
+│   ├── Services/ExplainService.cs, QuizService.cs, SummariseService.cs
 │   └── Models/ExplainRequest.cs, ExplainResponse.cs, QuizQuestionsRequest.cs,
-│       QuizQuestionsResponse.cs, QuizEvaluationRequest.cs, QuizEvaluationResponse.cs
+│       QuizQuestionsResponse.cs, QuizEvaluationRequest.cs, QuizEvaluationResponse.cs,
+│       SummariseRequest.cs, SummariseResponse.cs
 ├── StudyBuddy.Infrastructure/            # External I/O
 │   ├── DependencyInjection/              # AddInfrastructure()
 │   ├── Persistence/StudyBuddyDbContext.cs
@@ -236,7 +243,7 @@ backend/
 │       └── ElevenLabsOptions.cs          # stub for later TTS
 └── StudyBuddy.Domain/                    # Enterprise models
     ├── Entities/StudyMaterial.cs
-    └── Models/ExplainResult.cs, QuizQuestionsResult.cs, QuizEvaluationResult.cs
+    └── Models/ExplainResult.cs, QuizQuestionsResult.cs, QuizEvaluationResult.cs, SummariseResult.cs
 ```
 
 ### Layer rules (do not violate in future work)
@@ -345,6 +352,18 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 **Why:** Royson wants to keep the commit habit consistent and not lose track of what changed session to session.
 **Trigger:** New or changed plugin, service, interface, endpoint, or other backend/frontend code; a `docs/STUDYBUDDY-MEMORY.md` update; anything Claude would already judge as "worth a commit."
 
+### AD-016 — Two-tier verification standard: structural vs functional
+**Decision:** After any new mode/plugin is built, Claude Cowork explicitly labels which kind of check it did:
+- **Structural verification** (Claude can do this alone, no API key involved): confirms the expected files exist, code matches the established pattern, and DI/Kernel/controller wiring is correct. This is a code-review-level check, not proof the feature works at runtime.
+- **Functional verification** (requires the real `OPENROUTER_API_KEY` and a running server): actually hitting the endpoint and confirming Claude returns a correct, good-quality response. Claude does not do this silently or alone — it either happens with Royson running the app and reviewing output together (as done for Explain), or Royson pastes curl output back into Cowork for review.
+**Why:** Running the live server requires the real API key from `appsettings.Development.json`, which conflicts with the AD-014 secrets boundary. Structural checks alone are not sufficient to claim a feature "works" — functional verification with Royson is required before a mode is marked ✅ verified (not just ✅ built).
+**Status:** QuizPlugin is ✅ built, structurally verified, and **functionally verified** on 27 July 2026 — Royson ran both curl calls from Section 12 with real study material and deliberately wrong answers. `quiz/questions` returned 3 well-grounded, varied-difficulty questions in tutor voice. `quiz/evaluate` correctly confirmed the right answer and correctly caught both wrong answers (one confused, one directly contradicting DI), with accurate corrections grounded in the study material.
+
+### AD-017 — SummarisePlugin built and verified; all three modes now live
+**Decision:** `SummarisePlugin` built following the exact ExplainPlugin/QuizPlugin pattern (single `[KernelFunction("Summarise")]`, `ISummariseService`/`SummariseService`, `POST /api/study/summarise`). Build succeeded; Explain and Quiz left untouched.
+**Functional verification (27 July 2026):** Royson ran the summarise endpoint against a SOLID-principles passage with more than 5 candidate points. Response returned exactly 5 bullets, correctly identified all 5 SOLID principles as the core content, and folded the "why it matters" sentence into a closing note rather than forcing a 6th bullet — real prioritization, not truncation.
+**Status:** Explain, Quiz, and Summarise are now all ✅ built, structurally verified, and functionally verified. SK Planner (to route between them by intent) is the next major SK milestone per Section 10.
+
 ---
 
 ## 8. THE TTS LAYER — ELEVENLABS (PLANNED)
@@ -386,7 +405,7 @@ The app is source-agnostic — it never connects to any external platform direct
 By building this app, Royson will directly experience:
 
 1. **SK Plugin definition** — ✅ started with ExplainPlugin
-2. **SK Planner routing** — ⏳ next major SK learning milestone after Quiz/Summarise plugins
+2. **SK Planner routing** — ⏳ next major SK learning milestone — Quiz and Summarise plugins are both done, so this is now the immediate next step
 3. **Prompt Templates** — ✅ ExplainPromptTemplate in place
 4. **SK Telemetry** — ✅ console OTel wired for Claude calls
 5. **Multi-service orchestration** — ⏳ Claude done; ElevenLabs next
@@ -406,8 +425,8 @@ By building this app, Royson will directly experience:
 - [ ] End-to-end UI verification
 
 **Phase 2 — All three modes**
-- [x] QuizPlugin (`quiz/questions` + `quiz/evaluate`, build succeeded)
-- [ ] SummarisePlugin
+- [x] QuizPlugin (`quiz/questions` + `quiz/evaluate`) — built, structurally verified, and functionally verified end-to-end
+- [x] SummarisePlugin (`summarise`) — built, structurally verified, and functionally verified end-to-end
 - [ ] SK Planner to route by intent
 - [ ] Verify planner picks the correct mode
 
@@ -449,7 +468,15 @@ curl -X POST http://localhost:5017/api/study/quiz/evaluate \
   -d '{"questions":"1. ...\n2. ...\n3. ...","studentAnswers":"1. ...\n2. ...\n3. ...","studyMaterial":"Dependency injection means..."}'
 ```
 
-Expect JSON `{ "questions": "..." }` and `{ "evaluation": "..." }` respectively. **Not yet manually verified end-to-end** — next step is to run these curl calls against the built endpoints.
+Expect JSON `{ "questions": "..." }` and `{ "evaluation": "..." }` respectively. **Functionally verified 27 July 2026.**
+
+```bash
+curl -X POST http://localhost:5017/api/study/summarise \
+  -H "Content-Type: application/json" \
+  -d '{"studyMaterial":"..."}'
+```
+
+Expect JSON `{ "summary": "..." }`. **Functionally verified 27 July 2026.**
 
 **NuGet packages in play:**
 - `Microsoft.SemanticKernel`
@@ -510,10 +537,9 @@ Cowork will read `docs/STUDYBUDDY-MEMORY.md` directly from the local folder — 
 **Remember to sync:** If Cowork updated this local file in the previous session, copy-paste the updated content into the cloud project knowledge to keep both versions in sync.
 
 ### Sensible next steps (pick one):
-1. Manually verify the two new Quiz endpoints with curl (see Section 12) — not yet run
-2. Add SummarisePlugin (same Application pattern as ExplainPlugin / QuizPlugin)
-3. Scaffold React frontend that calls `POST /api/study/explain` — Phase 1 remaining item
-4. Decide and implement the secrets access boundary (AD-014 — `dotnet user-secrets` vs shell env var)
-5. Implement ElevenLabs TTS after text responses
+1. SK Planner — route by intent across ExplainPlugin, QuizPlugin, SummarisePlugin (all three are now built and verified, so this is the natural next SK milestone)
+2. Scaffold React frontend that calls the three live endpoints — Phase 1 remaining item
+3. Decide and implement the secrets access boundary (AD-014 — `dotnet user-secrets` vs shell env var)
+4. Implement ElevenLabs TTS after text responses
 
 Claude will read this file and pick up with no context loss.

@@ -19,6 +19,7 @@ ConfigureSemanticKernel(builder);
 
 builder.Services.AddScoped<IExplainService, ExplainService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
+builder.Services.AddScoped<ISummariseService, SummariseService>();
 
 var app = builder.Build();
 
@@ -85,4 +86,5 @@ static void ConfigureSemanticKernel(WebApplicationBuilder builder)
 
     kernelBuilder.Plugins.AddFromType<ExplainPlugin>();
     kernelBuilder.Plugins.AddFromType<QuizPlugin>();
+    kernelBuilder.Plugins.AddFromType<SummarisePlugin>();
 }

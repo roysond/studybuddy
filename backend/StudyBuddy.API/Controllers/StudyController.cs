@@ -10,15 +10,18 @@ public sealed class StudyController : ControllerBase
 {
     private readonly IExplainService _explainService;
     private readonly IQuizService _quizService;
+    private readonly ISummariseService _summariseService;
     private readonly ILogger<StudyController> _logger;
 
     public StudyController(
         IExplainService explainService,
         IQuizService quizService,
+        ISummariseService summariseService,
         ILogger<StudyController> logger)
     {
         _explainService = explainService ?? throw new ArgumentNullException(nameof(explainService));
         _quizService = quizService ?? throw new ArgumentNullException(nameof(quizService));
+        _summariseService = summariseService ?? throw new ArgumentNullException(nameof(summariseService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -131,5 +134,34 @@ public sealed class StudyController : ControllerBase
             cancellationToken);
 
         return Ok(new QuizEvaluationResponse { Evaluation = result.Evaluation });
+    }
+
+    /// <summary>
+    /// Summarises study material into key points using Claude via Semantic Kernel.
+    /// </summary>
+    [HttpPost("summarise")]
+    [ProducesResponseType(typeof(SummariseResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<SummariseResponse>> Summarise(
+        [FromBody] SummariseRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null)
+        {
+            return BadRequest("Request body is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.StudyMaterial))
+        {
+            return BadRequest($"{nameof(request.StudyMaterial)} is required.");
+        }
+
+        _logger.LogInformation("Summarise request received (material length: {Length})", request.StudyMaterial.Length);
+
+        var result = await _summariseService.SummariseAsync(
+            request.StudyMaterial,
+            cancellationToken);
+
+        return Ok(new SummariseResponse { Summary = result.Summary });
     }
 }

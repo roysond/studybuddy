@@ -1830,11 +1830,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Infrastructure/StudyBuddy.Infrastructure.csproj",
+      "projectUniqueName": "/Users/roysondsouza/AI Projects/STUDYBUDDY/backend/StudyBuddy.Infrastructure/StudyBuddy.Infrastructure.csproj",
       "projectName": "StudyBuddy.Infrastructure",
-      "projectPath": "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Infrastructure/StudyBuddy.Infrastructure.csproj",
+      "projectPath": "/Users/roysondsouza/AI Projects/STUDYBUDDY/backend/StudyBuddy.Infrastructure/StudyBuddy.Infrastructure.csproj",
       "packagesPath": "/Users/roysondsouza/.nuget/packages/",
-      "outputPath": "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Infrastructure/obj/",
+      "outputPath": "/Users/roysondsouza/AI Projects/STUDYBUDDY/backend/StudyBuddy.Infrastructure/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/Users/roysondsouza/.nuget/NuGet/NuGet.Config"
@@ -1849,11 +1849,11 @@
         "net10.0": {
           "targetAlias": "net10.0",
           "projectReferences": {
-            "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/StudyBuddy.Application.csproj": {
-              "projectPath": "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Application/StudyBuddy.Application.csproj"
+            "/Users/roysondsouza/AI Projects/STUDYBUDDY/backend/StudyBuddy.Application/StudyBuddy.Application.csproj": {
+              "projectPath": "/Users/roysondsouza/AI Projects/STUDYBUDDY/backend/StudyBuddy.Application/StudyBuddy.Application.csproj"
             },
-            "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Domain/StudyBuddy.Domain.csproj": {
-              "projectPath": "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Domain/StudyBuddy.Domain.csproj"
+            "/Users/roysondsouza/AI Projects/STUDYBUDDY/backend/StudyBuddy.Domain/StudyBuddy.Domain.csproj": {
+              "projectPath": "/Users/roysondsouza/AI Projects/STUDYBUDDY/backend/StudyBuddy.Domain/StudyBuddy.Domain.csproj"
             }
           }
         }
