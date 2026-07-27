@@ -1,7 +1,7 @@
 # STUDYBUDDY — Project Memory & Architecture Plan
 > This file is the context anchor for all future sessions on this project.
 > Start every new chat by sharing this file so no context is lost.
-> Last updated: 26 July 2026
+> Last updated: 27 July 2026
 
 ---
 
@@ -37,12 +37,12 @@
 - ElevenLabs reads the explanation aloud with natural intonation and emphasis *(not built yet)*
 - Goal: Make Claude explain things the way a real tutor would, not like documentation
 
-### Mode 2 — Quiz (not started)
+### Mode 2 — Quiz ✅ (backend live)
 - User requests a quiz on a topic or section
-- Claude generates questions from the loaded study material
+- Claude generates 3 questions from the loaded study material
 - User types their answers
 - Claude evaluates each answer and explains what was right or wrong
-- ElevenLabs reads the feedback aloud
+- ElevenLabs reads the feedback aloud *(not built yet)*
 - Goal: Active recall — the fastest way to retain information
 
 ### Mode 3 — Summarise (not started)
@@ -147,7 +147,39 @@ SK OpenTelemetry traces/metrics printed to console
 JSON { explanation: "..." }
 ```
 
-**Not yet in the path:** SK Planner, QuizPlugin, SummarisePlugin, ElevenLabs TTS, React UI.
+**Not yet in the path:** SK Planner, SummarisePlugin, ElevenLabs TTS, React UI.
+
+### What is implemented today (Quiz, Phase 2 start):
+
+```
+POST /api/study/quiz/questions  { topic, studyMaterial }
+↓
+StudyController
+↓
+IQuizService / QuizService
+↓
+Kernel.InvokeAsync("QuizPlugin", "GenerateQuestions", ...)
+↓
+QuizPlugin.GenerateQuestionsAsync → InvokePromptAsync(QuizPromptTemplates.QuestionsTemplate)
+↓
+OpenRouter → anthropic/claude-haiku-4-5
+↓
+JSON { questions: "..." }
+
+POST /api/study/quiz/evaluate  { questions, studentAnswers, studyMaterial }
+↓
+StudyController
+↓
+IQuizService / QuizService
+↓
+Kernel.InvokeAsync("QuizPlugin", "EvaluateAnswers", ...)
+↓
+QuizPlugin.EvaluateAnswersAsync → InvokePromptAsync(QuizPromptTemplates.EvaluationTemplate)
+↓
+OpenRouter → anthropic/claude-haiku-4-5
+↓
+JSON { evaluation: "..." }
+```
 
 ### The three SK Plugins:
 
@@ -159,10 +191,14 @@ JSON { explanation: "..." }
 - Decorated with `[KernelFunction("Explain")]` and `[Description(...)]`
 - Returns: explanation text
 
-**QuizPlugin** ⏳
-- Takes: topic or section + loaded study material
-- Prompt instruction: "Generate 3 questions on this topic. After the user answers, evaluate each answer and explain what was right or wrong."
-- Returns: questions first, then evaluation after answers
+**QuizPlugin** ✅
+- Location: `backend/StudyBuddy.Application/Plugins/QuizPlugin.cs`
+- Prompt: `backend/StudyBuddy.Application/Prompts/QuizPromptTemplates.cs` (two templates: `QuestionsTemplate`, `EvaluationTemplate`)
+- Two `[KernelFunction]` entries on one plugin: `GenerateQuestions` (topic + studyMaterial → 3 numbered questions) and `EvaluateAnswers` (questions + studentAnswers + studyMaterial → per-question right/wrong feedback)
+- Service: `IQuizService` / `QuizService` — mirrors `IExplainService` / `ExplainService` exactly
+- Endpoints: `POST /api/study/quiz/questions` and `POST /api/study/quiz/evaluate` on the same `StudyController`
+- Registered on the Kernel via `kernelBuilder.Plugins.AddFromType<QuizPlugin>()`; `IQuizService` registered `AddScoped` in `Program.cs`
+- Explain mode was left untouched during this build
 
 **SummarisePlugin** ⏳
 - Takes: pasted section of study material
@@ -182,15 +218,16 @@ backend/
 ├── .env.example                          # committed template (empty values)
 ├── StudyBuddy.API/                       # Entry point
 │   ├── Program.cs                        # SK + OpenRouter + Telemetry DI
-│   ├── Controllers/StudyController.cs    # POST /api/study/explain
+│   ├── Controllers/StudyController.cs    # explain + quiz/questions + quiz/evaluate
 │   ├── appsettings.json                  # safe defaults (no secrets)
 │   └── appsettings.Development.json      # LOCAL ONLY — gitignored
 ├── StudyBuddy.Application/               # Use cases / SK surface
-│   ├── Plugins/ExplainPlugin.cs
-│   ├── Prompts/ExplainPromptTemplate.cs
-│   ├── Interfaces/IExplainService.cs
-│   ├── Services/ExplainService.cs
-│   └── Models/ExplainRequest.cs, ExplainResponse.cs
+│   ├── Plugins/ExplainPlugin.cs, QuizPlugin.cs
+│   ├── Prompts/ExplainPromptTemplate.cs, QuizPromptTemplates.cs
+│   ├── Interfaces/IExplainService.cs, IQuizService.cs
+│   ├── Services/ExplainService.cs, QuizService.cs
+│   └── Models/ExplainRequest.cs, ExplainResponse.cs, QuizQuestionsRequest.cs,
+│       QuizQuestionsResponse.cs, QuizEvaluationRequest.cs, QuizEvaluationResponse.cs
 ├── StudyBuddy.Infrastructure/            # External I/O
 │   ├── DependencyInjection/              # AddInfrastructure()
 │   ├── Persistence/StudyBuddyDbContext.cs
@@ -199,7 +236,7 @@ backend/
 │       └── ElevenLabsOptions.cs          # stub for later TTS
 └── StudyBuddy.Domain/                    # Enterprise models
     ├── Entities/StudyMaterial.cs
-    └── Models/ExplainResult.cs
+    └── Models/ExplainResult.cs, QuizQuestionsResult.cs, QuizEvaluationResult.cs
 ```
 
 ### Layer rules (do not violate in future work)
@@ -278,6 +315,36 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 **Test helper:** `backend/StudyBuddy.API/StudyBuddy.API.http`  
 **Local URL:** `http://localhost:5017` (from `launchSettings.json`)
 
+### AD-010 — Cowork as the primary architecture and decision hub
+**Decision:** Claude Cowork (desktop app) is the primary environment for all architecture decisions, creative thinking, and prompt drafting for Cursor. Cursor handles actual code writing only.  
+**Why:** Cowork has full access to the local repo folder (read/write), can run shell commands, and persists files. It is a superset of regular Claude.ai chat — everything a Project chat can do, plus local machine capabilities. All big decisions originate in Cowork, then Cursor acts on them.  
+**Workflow:** Decide in Cowork → draft Cursor prompt → Cursor builds → come back to Cowork to verify and discuss next steps.
+
+### AD-011 — Local folder mount replaces need for GitHub MCP connectivity
+**Decision:** GitHub MCP connector is not required for AI context awareness. The local `studybuddy` repo folder is mounted in Cowork with read/write access.  
+**Why:** The local folder is more up-to-date than GitHub (includes uncommitted changes). Whenever Cursor makes changes, they are immediately readable from the local folder — no commit or push needed. To update context, simply say "scan the repo" and Cowork reads the latest state instantly.  
+**Implication:** GitHub Desktop is still used for version control and pushing to remote. GitHub MCP connectivity is a separate concern and not needed for this workflow.
+
+### AD-012 — Memory file update workflow and studybuddy-markdown-update skill
+**Decision:** Claude in Cowork owns the responsibility of updating `docs/STUDYBUDDY-MEMORY.md` after every meaningful session. A dedicated skill (`studybuddy-markdown-update`) was created to handle this.  
+**Why:** All major decisions originate in Cowork, so it makes more sense for Cowork to update the memory file than Cursor. The skill reads the file, makes surgical updates, saves it, and always outputs a visible ✅ confirmation.  
+**Two-copy sync rule:** The local file (`docs/STUDYBUDDY-MEMORY.md`) is the live source of truth — updated by the skill after each session. The cloud project knowledge copy in Claude.ai is the fallback — synced manually by Royson via copy-paste at the end of sessions or at major milestones.
+
+### AD-013 — QuizPlugin: two-endpoint design (generate, then evaluate)
+**Decision:** `QuizPlugin` exposes two `[KernelFunction]`s on one plugin — `GenerateQuestions` and `EvaluateAnswers` — invoked via two separate endpoints (`POST /api/study/quiz/questions`, `POST /api/study/quiz/evaluate`) rather than one combined endpoint.
+**Why:** Matches the real UX flow (ask → student answers → evaluate) and keeps each SK function single-purpose (SRP), same as ExplainPlugin's one-function-per-responsibility shape.
+**Pattern:** `QuizPlugin` / `IQuizService` / `QuizService` mirror `ExplainPlugin` / `IExplainService` / `ExplainService` file-for-file. Built by Cursor from a Cowork-drafted prompt per the AD-010 workflow; build succeeded, Explain mode untouched.
+
+### AD-014 — Secrets access boundary discussed
+**Decision:** No architecture change yet, but flagged as an open item: move `OPENROUTER_API_KEY` out of `appsettings.Development.json` and into either a shell-exported env var or `dotnet user-secrets`, so the real key never sits inside a file Cowork's connected folder can read.
+**Why:** Cowork sessions run remotely on Anthropic's servers; any file read through the connected folder is processed server-side for that session, not just scanned locally. `appsettings.Development.json` is gitignored (safe from git) but not excluded from Cowork's file access. `dotnet user-secrets` stores keys outside the project directory entirely, which is a real boundary; an instruction to Claude not to open the file is a behavioral backstop only, not a technical one.
+**Status:** Not yet implemented — Royson to decide whether to switch to `dotnet user-secrets` or a shell env var.
+
+### AD-015 — Standing reminder: commit & push after significant sessions
+**Decision:** After any session with a substantial code or architecture change — a new plugin/service/endpoint, a passing build, or a meaningful memory-file update — Claude Cowork reminds Royson to write a commit summary and push to GitHub via GitHub Desktop. Claude does not commit or push itself (no GitHub MCP write access is configured; GitHub Desktop is the tool of record per AD-011).
+**Why:** Royson wants to keep the commit habit consistent and not lose track of what changed session to session.
+**Trigger:** New or changed plugin, service, interface, endpoint, or other backend/frontend code; a `docs/STUDYBUDDY-MEMORY.md` update; anything Claude would already judge as "worth a commit."
+
 ---
 
 ## 8. THE TTS LAYER — ELEVENLABS (PLANNED)
@@ -339,7 +406,7 @@ By building this app, Royson will directly experience:
 - [ ] End-to-end UI verification
 
 **Phase 2 — All three modes**
-- [ ] QuizPlugin
+- [x] QuizPlugin (`quiz/questions` + `quiz/evaluate`, build succeeded)
 - [ ] SummarisePlugin
 - [ ] SK Planner to route by intent
 - [ ] Verify planner picks the correct mode
@@ -372,6 +439,18 @@ curl -X POST http://localhost:5017/api/study/explain \
 
 Expect JSON `{ "explanation": "..." }` and SK telemetry spans in the console.
 
+```bash
+curl -X POST http://localhost:5017/api/study/quiz/questions \
+  -H "Content-Type: application/json" \
+  -d '{"topic":"Dependency injection","studyMaterial":"Dependency injection means..."}'
+
+curl -X POST http://localhost:5017/api/study/quiz/evaluate \
+  -H "Content-Type: application/json" \
+  -d '{"questions":"1. ...\n2. ...\n3. ...","studentAnswers":"1. ...\n2. ...\n3. ...","studyMaterial":"Dependency injection means..."}'
+```
+
+Expect JSON `{ "questions": "..." }` and `{ "evaluation": "..." }` respectively. **Not yet manually verified end-to-end** — next step is to run these curl calls against the built endpoints.
+
 **NuGet packages in play:**
 - `Microsoft.SemanticKernel`
 - `Microsoft.SemanticKernel.Connectors.OpenAI`
@@ -399,8 +478,10 @@ Expect JSON `{ "explanation": "..." }` and SK telemetry spans in the console.
 - [ ] ElevenLabs voice selection — which voice fits a tutor persona?
 - [ ] PostgreSQL schema beyond `StudyMaterial` — what else to persist (sessions, quiz history)?
 - [ ] When to introduce SK Planner — after both Quiz + Summarise plugins exist, or earlier?
-- [ ] GitHub remote / project board setup
-- [ ] Whether to switch from Haiku to a larger Claude model for Quiz evaluation quality
+- [x] ~~GitHub connectivity for AI context~~ → **Resolved by local folder mount in Cowork** (AD-011). GitHub Desktop still used for version control separately.
+- [ ] GitHub remote / project board setup (for version control and backups — separate from AI context)
+- [ ] Whether to switch from Haiku to a larger Claude model for Quiz evaluation quality — now testable since QuizPlugin is live
+- [ ] Secrets access boundary — switch `OPENROUTER_API_KEY` from `appsettings.Development.json` to `dotnet user-secrets` or shell env var (AD-014)
 
 ---
 
@@ -409,23 +490,30 @@ Expect JSON `{ "explanation": "..." }` and SK telemetry spans in the console.
 - **Builder:** Royson D'Souza
 - **Background:** MBA graduate, no prior coding background, learning through building
 - **Existing project:** NOSYOR.M.I — full-stack AI personal finance app (.NET 10 + React 19 + pgvector + Docker)
-- **Tools:** Cursor IDE (Agent mode), Claude Code extension in Cursor, GitHub Desktop
-- **Working style:** Architecture first, then Cursor builds the code
+- **Tools:** Cursor IDE (Agent mode), Claude Code extension in Cursor, GitHub Desktop, Claude Cowork (desktop app)
+- **Working style:** Architecture first in Cowork, then Cursor builds the code, then back to Cowork to verify and plan next steps
 - **Standing rule:** Every Cursor prompt must include "Follow SOLID principles and clean coding structure throughout"
-- **AI in chat vs AI in Cursor:** claude.ai handles architecture and learning decisions. Claude Code in Cursor handles file edits and terminal commands.
+- **Standing rule:** Claude Cowork reminds Royson to commit and push to GitHub (via GitHub Desktop) after any session with a significant code or docs change (AD-015)
+- **AI workflow:** Claude Cowork = architecture, decisions, creativity, memory file updates, repo scanning. Cursor = actual code writing and terminal commands. Both have access to the same local repo folder.
 
 ---
 
 ## 16. HOW TO START THE NEXT SESSION
 
-Paste this file into a new chat with the message:
+**In Cowork (preferred):** The local repo folder is already mounted. Simply open Cowork and say:
+*"Read the StudyBuddy memory file and let's continue from the next unchecked item."*
+Cowork will read `docs/STUDYBUDDY-MEMORY.md` directly from the local folder — no copy-paste needed.
 
-*"Let's continue building StudyBuddy. Here is the project memory file with everything we decided. Phase 1 backend ExplainPlugin is done — pick up from the next unchecked item."*
+**In regular Claude.ai chat:** Paste the contents of this file with the message:
+*"Let's continue building StudyBuddy. Here is the project memory file. Pick up from the next unchecked item."*
+
+**Remember to sync:** If Cowork updated this local file in the previous session, copy-paste the updated content into the cloud project knowledge to keep both versions in sync.
 
 ### Sensible next steps (pick one):
-1. Manually verify Explain with a real `OPENROUTER_API_KEY` and confirm telemetry in console
-2. Scaffold React frontend that calls `POST /api/study/explain`
-3. Add QuizPlugin (same Application pattern as Explain)
-4. Implement ElevenLabs TTS after text responses
+1. Manually verify the two new Quiz endpoints with curl (see Section 12) — not yet run
+2. Add SummarisePlugin (same Application pattern as ExplainPlugin / QuizPlugin)
+3. Scaffold React frontend that calls `POST /api/study/explain` — Phase 1 remaining item
+4. Decide and implement the secrets access boundary (AD-014 — `dotnet user-secrets` vs shell env var)
+5. Implement ElevenLabs TTS after text responses
 
 Claude will read this file and pick up with no context loss.

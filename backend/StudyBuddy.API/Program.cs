@@ -18,6 +18,7 @@ ConfigureSemanticKernelTelemetry(builder);
 ConfigureSemanticKernel(builder);
 
 builder.Services.AddScoped<IExplainService, ExplainService>();
+builder.Services.AddScoped<IQuizService, QuizService>();
 
 var app = builder.Build();
 
@@ -83,4 +84,5 @@ static void ConfigureSemanticKernel(WebApplicationBuilder builder)
 #pragma warning restore SKEXP0010
 
     kernelBuilder.Plugins.AddFromType<ExplainPlugin>();
+    kernelBuilder.Plugins.AddFromType<QuizPlugin>();
 }
