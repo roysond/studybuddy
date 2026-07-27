@@ -5,7 +5,10 @@ namespace StudyBuddy.Application.Models;
 /// </summary>
 public sealed class QuizQuestionsRequest
 {
-    public required string Topic { get; init; }
+    /// <summary>
+    /// Optional. If omitted, the topic is chosen automatically from the study material.
+    /// </summary>
+    public string? Topic { get; init; }
 
     public required string StudyMaterial { get; init; }
 }

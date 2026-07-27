@@ -18,18 +18,21 @@ public sealed class ExplainService : IExplainService
     }
 
     public async Task<ExplainResult> ExplainAsync(
-        string userMessage,
         string studyMaterial,
+        string? userMessage = null,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(userMessage);
         ArgumentException.ThrowIfNullOrWhiteSpace(studyMaterial);
 
         var arguments = new KernelArguments
         {
-            ["userMessage"] = userMessage,
             ["studyMaterial"] = studyMaterial
         };
+
+        if (!string.IsNullOrWhiteSpace(userMessage))
+        {
+            arguments["userMessage"] = userMessage;
+        }
 
         var result = await _kernel.InvokeAsync(
             pluginName: nameof(ExplainPlugin),

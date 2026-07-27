@@ -8,7 +8,7 @@ namespace StudyBuddy.Application.Interfaces;
 public interface IExplainService
 {
     Task<ExplainResult> ExplainAsync(
-        string userMessage,
         string studyMaterial,
+        string? userMessage = null,
         CancellationToken cancellationToken = default);
 }

@@ -29,6 +29,7 @@ frontend/.env.production
 *.env
 !.env.example
 !backend/.env.example
+!frontend/.env.example
 appsettings.Development.json
 **/appsettings.Development.json
 

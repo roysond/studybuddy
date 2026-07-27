@@ -5,7 +5,10 @@ namespace StudyBuddy.Application.Models;
 /// </summary>
 public sealed class ExplainRequest
 {
-    public required string UserMessage { get; init; }
+    /// <summary>
+    /// Optional. If omitted, the full study material is explained instead of answering a specific question.
+    /// </summary>
+    public string? UserMessage { get; init; }
 
     public required string StudyMaterial { get; init; }
 }

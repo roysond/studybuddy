@@ -86,8 +86,11 @@ This is the conceptual bridge — same ideas, different names:
 | LangChain Chain | SK Plugin | A named, reusable AI task |
 | LangGraph | SK Planner | Routes between tasks based on intent |
 | Prompt Template | Prompt Template (same name) | Reusable prompt with variable slots |
-| LangSmith | SK Telemetry | Logs every AI call automatically |
+| LangSmith (tracing half) | SK Telemetry | Logs every AI call automatically — what happened |
+| LangSmith (evaluations half) | `Microsoft.Extensions.AI.Evaluation` | Scores whether the output was actually good — Groundedness, Relevance, Completeness, Fluency, Coherence, Truthfulness. Separate library from SK Telemetry; sibling to the Microsoft.Extensions.AI packages SK already sits on. |
 | Tool | SK Function | A capability the AI can call |
+
+**Important distinction:** LangSmith is not one thing — it's tracing (observability: what happened) plus evaluation (quality: was it good). The original mapping in this file equated LangSmith with SK Telemetry, which only covers the tracing half. There is no SK-native equivalent for evals; `Microsoft.Extensions.AI.Evaluation` fills that gap.
 
 **Key insight:** The concepts are identical. Only the syntax and language differ. Understanding SK deeply means you can speak to LangChain concepts in interviews — the architectural thinking transfers directly.
 
@@ -348,7 +351,7 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 **Status:** Not yet implemented — Royson to decide whether to switch to `dotnet user-secrets` or a shell env var.
 
 ### AD-015 — Standing reminder: commit & push after significant sessions
-**Decision:** After any session with a substantial code or architecture change — a new plugin/service/endpoint, a passing build, or a meaningful memory-file update — Claude Cowork reminds Royson to write a commit summary and push to GitHub via GitHub Desktop. Claude does not commit or push itself (no GitHub MCP write access is configured; GitHub Desktop is the tool of record per AD-011).
+**Decision:** After any session with a substantial code or architecture change — a new plugin/service/endpoint, a passing build, or a meaningful memory-file update — Claude Cowork reminds Royson to write a commit summary and push to GitHub. In practice Royson commits via either GitHub Desktop or Cursor's built-in commit-and-sync — both are fine, whichever is faster in the moment. Claude does not commit or push itself (no GitHub MCP write access is configured).
 **Why:** Royson wants to keep the commit habit consistent and not lose track of what changed session to session.
 **Trigger:** New or changed plugin, service, interface, endpoint, or other backend/frontend code; a `docs/STUDYBUDDY-MEMORY.md` update; anything Claude would already judge as "worth a commit."
 
@@ -363,6 +366,27 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 **Decision:** `SummarisePlugin` built following the exact ExplainPlugin/QuizPlugin pattern (single `[KernelFunction("Summarise")]`, `ISummariseService`/`SummariseService`, `POST /api/study/summarise`). Build succeeded; Explain and Quiz left untouched.
 **Functional verification (27 July 2026):** Royson ran the summarise endpoint against a SOLID-principles passage with more than 5 candidate points. Response returned exactly 5 bullets, correctly identified all 5 SOLID principles as the core content, and folded the "why it matters" sentence into a closing note rather than forcing a 6th bullet — real prioritization, not truncation.
 **Status:** Explain, Quiz, and Summarise are now all ✅ built, structurally verified, and functionally verified. SK Planner (to route between them by intent) is the next major SK milestone per Section 10.
+
+### AD-018 — Automated evaluation via Microsoft.Extensions.AI.Evaluation
+**Decision:** Adopt `Microsoft.Extensions.AI.Evaluation` (plus `Microsoft.Extensions.AI.Evaluation.Quality` for the Relevance/Groundedness/Completeness/Fluency/Coherence/Truthfulness/Equivalence evaluators) as the eval layer for StudyBuddy, to replace the manual curl-and-eyeball verification process used for Quiz and Summarise with automated, repeatable scoring.
+**Why:** This is the .NET-native equivalent of LangSmith's evaluation half (see Section 4). It also directly maps to real "AI evals" job requirements Royson is researching — defining a metric, describing a test set, and catching a specific failure mode are the core eval-engineering skills, and this library lets StudyBuddy demonstrate exactly that, in .NET rather than the more common Python eval ecosystem.
+**Scope:** Build a small eval test set per mode (a handful of study-material + expected-quality-bar pairs), wire the Quality evaluators against Explain/Quiz/Summarise outputs, and run it as a repeatable regression check rather than a one-off manual test.
+**How results are viewed:** `Microsoft.Extensions.AI.Evaluation.Reporting` caches eval run results to disk. Install the CLI once via `dotnet tool install Microsoft.Extensions.AI.Evaluation.Console`, then generate a report with `dotnet aieval report --path <cache folder> --output report.html --open` — produces an interactive HTML report (drill-down from high-level scores to individual test cases, historical trend tracking across runs) that opens in the browser. This is separate from SK Telemetry, which prints token/latency/call info to the console in real time. Both are developer-facing tools — neither appears in the StudyBuddy React frontend, same as how LangSmith/Datadog dashboards work at companies (internal tooling, not product UI).
+**Status:** Not yet started — logged as Phase 5 in Section 11.
+
+### AD-019 — Developer Dashboard: deferred until after the student-facing frontend
+**Decision:** A "Developer" tab/view (separate from the student-facing Explain/Quiz/Summarise screens) showing live telemetry and evaluation results was discussed and architected, but deliberately deferred. Sequencing: Phase 1 (student-facing React frontend) ships first, so Royson can see the app work for its primary purpose end-to-end; the Developer Dashboard becomes its own later phase (Phase 6) once that's solid.
+**Why:** Building the dashboard now would mean scaffolding the React app shell around developer tooling before the actual product exists. Royson explicitly wants to see the primary-purpose app running first, then layer in developer-facing tooling.
+**Architecture, for when this phase starts (do not build yet):**
+- **Telemetry (can be near-live):** SK Telemetry currently only prints to console (AD-005) — not stored or queryable. Needs an Infrastructure-layer capture mechanism (in-memory store of recent calls: mode, tokens in/out, latency, timestamp) plus a new API endpoint the frontend polls every few seconds. Polling recommended over Server-Sent Events/WebSockets — simpler, SOLID-clean, upgradeable later without touching Domain.
+- **Evals (cannot be live — this is true industry-wide, not a limitation of this project):** Evals score a curated test set using an LLM-as-judge, which is slow and costly — no real eval tool (LangSmith, Datadog, etc.) runs evals synchronously per live user request. Needs `POST /api/dev/evals/run` (triggers the Microsoft.Extensions.AI.Evaluation suite programmatically) and `GET /api/dev/evals/latest` (returns scored results as JSON). The full interactive `dotnet aieval` HTML report (AD-018) stays as a separate, complementary deep-dive tool rather than being rebuilt inside React.
+- **Frontend:** a distinct Developer tab/route, clearly separated from student-facing screens.
+**Status:** Architecture decided, build deferred. Prerequisite: Phase 1 React frontend must exist first (tab needs a shell to live in). Do not draft a Cursor prompt for this until Royson asks.
+
+### AD-020 — StudyBuddy frontend uses a fixed, dedicated dev port (5180)
+**Decision:** `frontend/vite.config.ts` pins the dev server to port 5180 with `strictPort: true`. The CORS policy in `Program.cs` is locked to `http://localhost:5180` accordingly.
+**Why:** Royson also runs NOSYOR.M.I locally, which legitimately occupies Vite's default port 5173. Without a fixed port, StudyBuddy's Vite server would silently drift to 5174/5175/etc. whenever 5173 was taken, which quietly breaks CORS (the policy only allows one exact origin) and produced a confusing multi-round debugging session. A dedicated port removes the collision entirely; `strictPort: true` means if 5180 is ever unexpectedly occupied, Vite fails loudly instead of silently drifting again.
+**Implication:** StudyBuddy's frontend always runs at `http://localhost:5180`. If this port ever needs to change, both `vite.config.ts` and the CORS origin in `Program.cs` must be updated together.
 
 ---
 
@@ -410,6 +434,7 @@ By building this app, Royson will directly experience:
 4. **SK Telemetry** — ✅ console OTel wired for Claude calls
 5. **Multi-service orchestration** — ⏳ Claude done; ElevenLabs next
 6. **Claude API behaviour** — ✅ via OpenRouter + Haiku 4.5
+7. **Eval literacy** — ⏳ Phase 5 (AD-018): defining metrics, building a test set, automated grading via `Microsoft.Extensions.AI.Evaluation`. Directly relevant to "AI evals engineer" / AI quality roles Royson is researching — the transferable skill is eval literacy itself (metric definition, test-set design, failure-mode tracing), not the specific tool, since most eval tooling in the job market is Python-based and this project is .NET.
 
 ---
 
@@ -439,6 +464,20 @@ By building this app, Royson will directly experience:
 - [ ] Persistent study material loading / file upload
 - [ ] Session history in PostgreSQL
 - [ ] UI polish
+
+**Phase 5 — Automated Evaluation (AD-018)**
+- [ ] Add `Microsoft.Extensions.AI.Evaluation` + `Microsoft.Extensions.AI.Evaluation.Quality` packages
+- [ ] Define a small eval test set per mode (study material + expected quality bar)
+- [ ] Wire Groundedness / Relevance / Completeness evaluators against Explain, Quiz, and Summarise outputs
+- [ ] Replace manual curl-and-eyeball verification with an automated, repeatable eval run
+- [ ] Document at least one failure mode each eval catches (learning goal — mirrors real eval-engineering practice)
+
+**Phase 6 — Developer Dashboard (AD-019, deferred)**
+- [ ] Telemetry capture layer (Infrastructure) — in-memory store of recent calls (mode, tokens, latency, timestamp)
+- [ ] `GET` endpoint for the frontend to poll recent telemetry
+- [ ] `POST /api/dev/evals/run` + `GET /api/dev/evals/latest` — trigger and retrieve eval results
+- [ ] Developer tab/route in the frontend, separate from student-facing screens
+- [ ] Not started until Phase 1 (React frontend) is done — see AD-019
 
 ---
 
@@ -537,9 +576,11 @@ Cowork will read `docs/STUDYBUDDY-MEMORY.md` directly from the local folder — 
 **Remember to sync:** If Cowork updated this local file in the previous session, copy-paste the updated content into the cloud project knowledge to keep both versions in sync.
 
 ### Sensible next steps (pick one):
-1. SK Planner — route by intent across ExplainPlugin, QuizPlugin, SummarisePlugin (all three are now built and verified, so this is the natural next SK milestone)
-2. Scaffold React frontend that calls the three live endpoints — Phase 1 remaining item
-3. Decide and implement the secrets access boundary (AD-014 — `dotnet user-secrets` vs shell env var)
-4. Implement ElevenLabs TTS after text responses
+1. **Scaffold the React frontend (student-facing)** — Phase 1 remaining item, and the priority Royson chose: see the app work end-to-end for its primary purpose before adding any developer tooling
+2. SK Planner — route by intent across ExplainPlugin, QuizPlugin, SummarisePlugin (all three are now built and verified)
+3. Phase 5 — Automated Evaluation (AD-018): add `Microsoft.Extensions.AI.Evaluation`, build a small eval test set, wire quality evaluators against the three modes
+4. Decide and implement the secrets access boundary (AD-014 — `dotnet user-secrets` vs shell env var)
+5. Implement ElevenLabs TTS after text responses
+6. Phase 6 — Developer Dashboard (AD-019) — do not start before Phase 1 is done
 
 Claude will read this file and pick up with no context loss.

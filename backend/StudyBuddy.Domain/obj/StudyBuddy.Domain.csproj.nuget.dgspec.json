@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/roysondsouza/AI Projects/STUDYBUDDY/backend/StudyBuddy.Domain/StudyBuddy.Domain.csproj": {}
+    "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Domain/StudyBuddy.Domain.csproj": {}
   },
   "projects": {
-    "/Users/roysondsouza/AI Projects/STUDYBUDDY/backend/StudyBuddy.Domain/StudyBuddy.Domain.csproj": {
+    "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Domain/StudyBuddy.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/roysondsouza/AI Projects/STUDYBUDDY/backend/StudyBuddy.Domain/StudyBuddy.Domain.csproj",
+        "projectUniqueName": "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Domain/StudyBuddy.Domain.csproj",
         "projectName": "StudyBuddy.Domain",
-        "projectPath": "/Users/roysondsouza/AI Projects/STUDYBUDDY/backend/StudyBuddy.Domain/StudyBuddy.Domain.csproj",
+        "projectPath": "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Domain/StudyBuddy.Domain.csproj",
         "packagesPath": "/Users/roysondsouza/.nuget/packages/",
-        "outputPath": "/Users/roysondsouza/AI Projects/STUDYBUDDY/backend/StudyBuddy.Domain/obj/",
+        "outputPath": "/Users/roysondsouza/AI Projects/studybuddy/backend/StudyBuddy.Domain/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/roysondsouza/.nuget/NuGet/NuGet.Config"

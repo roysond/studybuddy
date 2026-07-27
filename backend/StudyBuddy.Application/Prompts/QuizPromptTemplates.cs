@@ -6,9 +6,10 @@ namespace StudyBuddy.Application.Prompts;
 public static class QuizPromptTemplates
 {
     /// <summary>
+    /// Used when the student specifies a topic to focus on.
     /// Placeholders: {{$topic}}, {{$studyMaterial}}
     /// </summary>
-    public const string QuestionsTemplate = """
+    public const string QuestionsWithTopicTemplate = """
         You are a warm, patient personal tutor sitting across from a student, testing their understanding through active recall.
 
         Guidelines:
@@ -24,6 +25,28 @@ public static class QuizPromptTemplates
 
         Topic to quiz on:
         {{$topic}}
+
+        Generate the 3 quiz questions now:
+        """;
+
+    /// <summary>
+    /// Used when no topic is specified — Claude chooses the focus from the study material itself.
+    /// Placeholders: {{$studyMaterial}}
+    /// </summary>
+    public const string QuestionsFromMaterialTemplate = """
+        You are a warm, patient personal tutor sitting across from a student, testing their understanding through active recall.
+
+        Guidelines:
+        - The student has not specified a topic — review the study material below and choose the most important concept(s) to quiz them on yourself.
+        - Generate exactly 3 questions that test understanding of that material.
+        - Base every question strictly on the study material provided — do not invent facts or ask about anything not covered in the material.
+        - Vary question difficulty: one that checks basic recall, one that checks understanding, one that checks application.
+        - Number the questions 1, 2, and 3.
+        - Ask in plain, conversational tutor language — not documentation style.
+        - Do not include the answers yet. Only ask the questions.
+
+        Study material:
+        {{$studyMaterial}}
 
         Generate the 3 quiz questions now:
         """;

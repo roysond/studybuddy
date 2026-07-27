@@ -18,18 +18,21 @@ public sealed class QuizService : IQuizService
     }
 
     public async Task<QuizQuestionsResult> GenerateQuestionsAsync(
-        string topic,
         string studyMaterial,
+        string? topic = null,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
         ArgumentException.ThrowIfNullOrWhiteSpace(studyMaterial);
 
         var arguments = new KernelArguments
         {
-            ["topic"] = topic,
             ["studyMaterial"] = studyMaterial
         };
+
+        if (!string.IsNullOrWhiteSpace(topic))
+        {
+            arguments["topic"] = topic;
+        }
 
         var result = await _kernel.InvokeAsync(
             pluginName: nameof(QuizPlugin),

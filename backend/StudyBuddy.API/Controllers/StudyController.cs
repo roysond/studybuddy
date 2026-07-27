@@ -40,21 +40,16 @@ public sealed class StudyController : ControllerBase
             return BadRequest("Request body is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.UserMessage))
-        {
-            return BadRequest($"{nameof(request.UserMessage)} is required.");
-        }
-
         if (string.IsNullOrWhiteSpace(request.StudyMaterial))
         {
             return BadRequest($"{nameof(request.StudyMaterial)} is required.");
         }
 
-        _logger.LogInformation("Explain request received (message length: {Length})", request.UserMessage.Length);
+        _logger.LogInformation("Explain request received (has question: {HasQuestion})", !string.IsNullOrWhiteSpace(request.UserMessage));
 
         var result = await _explainService.ExplainAsync(
-            request.UserMessage,
             request.StudyMaterial,
+            request.UserMessage,
             cancellationToken);
 
         return Ok(new ExplainResponse { Explanation = result.Explanation });
@@ -75,21 +70,16 @@ public sealed class StudyController : ControllerBase
             return BadRequest("Request body is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.Topic))
-        {
-            return BadRequest($"{nameof(request.Topic)} is required.");
-        }
-
         if (string.IsNullOrWhiteSpace(request.StudyMaterial))
         {
             return BadRequest($"{nameof(request.StudyMaterial)} is required.");
         }
 
-        _logger.LogInformation("Quiz question generation requested (topic length: {Length})", request.Topic.Length);
+        _logger.LogInformation("Quiz question generation requested (has topic: {HasTopic})", !string.IsNullOrWhiteSpace(request.Topic));
 
         var result = await _quizService.GenerateQuestionsAsync(
-            request.Topic,
             request.StudyMaterial,
+            request.Topic,
             cancellationToken);
 
         return Ok(new QuizQuestionsResponse { Questions = result.Questions });

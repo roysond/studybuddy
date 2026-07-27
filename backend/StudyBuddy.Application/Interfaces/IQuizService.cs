@@ -8,8 +8,8 @@ namespace StudyBuddy.Application.Interfaces;
 public interface IQuizService
 {
     Task<QuizQuestionsResult> GenerateQuestionsAsync(
-        string topic,
         string studyMaterial,
+        string? topic = null,
         CancellationToken cancellationToken = default);
 
     Task<QuizEvaluationResult> EvaluateAnswersAsync(

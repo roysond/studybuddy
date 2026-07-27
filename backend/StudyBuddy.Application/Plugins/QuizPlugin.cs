@@ -6,7 +6,8 @@ namespace StudyBuddy.Application.Plugins;
 
 /// <summary>
 /// Semantic Kernel plugin that generates quiz questions from study material
-/// and evaluates a student's answers against it.
+/// (on a given topic, or one chosen automatically) and evaluates a student's
+/// answers against it.
 /// </summary>
 public sealed class QuizPlugin
 {
@@ -14,25 +15,33 @@ public sealed class QuizPlugin
     public const string EvaluateAnswersFunctionName = "EvaluateAnswers";
 
     [KernelFunction(GenerateQuestionsFunctionName)]
-    [Description("Generates 3 quiz questions on a topic, grounded strictly in the loaded study material.")]
+    [Description("Generates 3 quiz questions grounded in the loaded study material — on a given topic if specified, or on a topic chosen from the material itself if not.")]
     public async Task<string> GenerateQuestionsAsync(
         Kernel kernel,
-        [Description("The topic or section to quiz the student on")] string topic,
         [Description("The study material to ground the questions in")] string studyMaterial,
+        [Description("Optional. The topic or section to quiz the student on. If omitted, the topic is chosen automatically from the study material.")] string? topic = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(kernel);
-        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
         ArgumentException.ThrowIfNullOrWhiteSpace(studyMaterial);
+
+        var hasTopic = !string.IsNullOrWhiteSpace(topic);
 
         var arguments = new KernelArguments
         {
-            ["topic"] = topic,
             ["studyMaterial"] = studyMaterial
         };
 
+        var template = QuizPromptTemplates.QuestionsFromMaterialTemplate;
+
+        if (hasTopic)
+        {
+            arguments["topic"] = topic!;
+            template = QuizPromptTemplates.QuestionsWithTopicTemplate;
+        }
+
         var result = await kernel.InvokePromptAsync(
-            QuizPromptTemplates.QuestionsTemplate,
+            template,
             arguments,
             cancellationToken: cancellationToken);
 

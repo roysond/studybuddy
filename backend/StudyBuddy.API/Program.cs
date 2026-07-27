@@ -21,6 +21,16 @@ builder.Services.AddScoped<IExplainService, ExplainService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<ISummariseService, SummariseService>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("StudyBuddyFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:5180")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -28,6 +38,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseCors("StudyBuddyFrontend");
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
