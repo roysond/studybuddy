@@ -191,6 +191,29 @@ textarea {
   margin-top: 0.75rem;
 }
 
+.playback__controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.playback__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.playback__label {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.playback__select,
+.playback__range {
+  font-size: 0.85rem;
+}
+
 @media (max-width: 640px) {
   .panel__header {
     flex-direction: column;

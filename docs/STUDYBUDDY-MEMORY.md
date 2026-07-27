@@ -395,6 +395,17 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 **Implementation notes:** `PlayButton.tsx` chunks text (~200 chars, on sentence boundaries) because Chrome silently truncates long utterances; voices load asynchronously via the `voiceschanged` event; `interrupted`/`canceled` utterance errors are ignored since they fire on deliberate stop.
 **Env vars `ELEVENLABS_API_KEY` / `ELEVENLABS_VOICE_ID`** are no longer required to run the app, but remain valid if the ElevenLabs path is re-enabled.
 
+### AD-022 — OPEN ISSUE: Web Speech voice quality unresolved (paused 27 July 2026)
+**State:** Voice + speed picker is built and working (`useSpeechVoices` hook + `PlayButton`, choice persisted in `localStorage`, speed 0.5x–1.5x). Playback functions correctly. **The problem is voice quality only** — the available voices sound flat and robotic.
+**What was tried:** Royson downloaded macOS Enhanced/Premium voices via System Settings → Accessibility → **Read & Speak** (renamed from "Spoken Content" in his macOS version) → System Voice → Manage Voices. The downloaded voices do **not** appear in the app's dropdown — it only lists basic voices (e.g. "Shelley (English (United Kingdom))").
+**Untested next steps when resuming (in order):**
+1. Fully quit Chrome (Cmd+Q, not just the tab) and relaunch — Chrome caches the system voice list at launch, so voices installed mid-session won't appear.
+2. Open `http://localhost:5180` in **Safari** — Safari exposes the full macOS voice set; Chrome on macOS is known to expose only a subset, and downloaded Premium/Enhanced variants are often excluded.
+3. Diagnostic — run in DevTools console to see what the browser can actually access:
+   `speechSynthesis.getVoices().filter(v => v.lang.startsWith('en')).forEach(v => console.log(v.name, '|', v.lang, '|', v.localService ? 'local' : 'network'));`
+4. If Chrome genuinely can't reach the good voices: either use Safari for study sessions, or build the local neural TTS option (Kokoro via transformers.js — runs fully in-browser, free and unlimited, high quality, but ~300MB model download and a significantly bigger build).
+**Do not change any code until Royson confirms** — he paused here deliberately.
+
 ---
 
 ## 8. THE TTS LAYER — ELEVENLABS (PLANNED)
