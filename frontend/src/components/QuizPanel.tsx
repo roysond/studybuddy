@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { evaluateQuizAnswers, generateQuizQuestions } from '../api/studyApi';
+import { PlayButton } from './PlayButton';
 
 type QuizStep = 'generate' | 'evaluate';
 
@@ -116,6 +117,7 @@ export function QuizPanel({ studyMaterial }: QuizPanelProps) {
           <div className="result">
             <h3 className="result__title">Questions</h3>
             <pre className="result__body">{questions}</pre>
+            <PlayButton text={questions} />
           </div>
 
           <label className="field">
@@ -142,6 +144,7 @@ export function QuizPanel({ studyMaterial }: QuizPanelProps) {
         <div className="result">
           <h3 className="result__title">Evaluation</h3>
           <pre className="result__body">{evaluation}</pre>
+          <PlayButton text={evaluation} />
         </div>
       ) : null}
     </section>

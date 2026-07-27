@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { summariseMaterial } from '../api/studyApi';
+import { PlayButton } from './PlayButton';
 
 interface SummarisePanelProps {
   studyMaterial: string;
@@ -54,6 +55,7 @@ export function SummarisePanel({ studyMaterial }: SummarisePanelProps) {
         <div className="result">
           <h3 className="result__title">Summary</h3>
           <pre className="result__body">{summary}</pre>
+          <PlayButton text={summary} />
         </div>
       ) : null}
     </section>

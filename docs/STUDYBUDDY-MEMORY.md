@@ -388,6 +388,13 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 **Why:** Royson also runs NOSYOR.M.I locally, which legitimately occupies Vite's default port 5173. Without a fixed port, StudyBuddy's Vite server would silently drift to 5174/5175/etc. whenever 5173 was taken, which quietly breaks CORS (the policy only allows one exact origin) and produced a confusing multi-round debugging session. A dedicated port removes the collision entirely; `strictPort: true` means if 5180 is ever unexpectedly occupied, Vite fails loudly instead of silently drifting again.
 **Implication:** StudyBuddy's frontend always runs at `http://localhost:5180`. If this port ever needs to change, both `vite.config.ts` and the CORS origin in `Program.cs` must be updated together.
 
+### AD-021 — TTS switched to browser Web Speech API; ElevenLabs kept as dormant alternative
+**Decision:** Audio playback uses the browser's built-in Web Speech API (`window.speechSynthesis`), entirely client-side. The ElevenLabs backend integration (`ISpeechService`, `ElevenLabsSpeechService`, `SpeechController`, `POST /api/speech`) remains in the codebase, fully working but unused.
+**Why:** ElevenLabs was built and verified working (AD-007 superseded), but its free tier caps at ~10,000 credits/month ≈ 1 credit per character — roughly 3 full Explain responses. Not viable for daily study use. Two earlier errors during integration were both plan limits, not code faults: `402 paid_plan_required` (free accounts can't use Voice Library voices via API — resolved by switching to a `premade` voice, Alice `Xb7hH8MSUJpSbSDYk0k2`), then `401 quota_exceeded`. Web Speech API is free, unlimited, and needs no API key or backend call; the tradeoff is a more robotic voice.
+**Why keep the ElevenLabs code:** It sits behind the `ISpeechService` abstraction with zero coupling to the tutoring modes — it costs nothing to leave in place and can be re-enabled by swapping the `PlayButton` implementation back if the plan is ever upgraded. This is a concrete payoff of the layer isolation in AD-001.
+**Implementation notes:** `PlayButton.tsx` chunks text (~200 chars, on sentence boundaries) because Chrome silently truncates long utterances; voices load asynchronously via the `voiceschanged` event; `interrupted`/`canceled` utterance errors are ignored since they fire on deliberate stop.
+**Env vars `ELEVENLABS_API_KEY` / `ELEVENLABS_VOICE_ID`** are no longer required to run the app, but remain valid if the ElevenLabs path is re-enabled.
+
 ---
 
 ## 8. THE TTS LAYER — ELEVENLABS (PLANNED)
@@ -456,9 +463,10 @@ By building this app, Royson will directly experience:
 - [ ] Verify planner picks the correct mode
 
 **Phase 3 — TTS**
-- [ ] Real ElevenLabs client (replace stub)
-- [ ] Pass every Claude response to TTS
-- [ ] React plays audio with text
+- [x] Real ElevenLabs client (replaced stub) — built and working, now dormant per AD-021
+- [x] Speech endpoint (`POST /api/speech`) returning audio bytes
+- [x] "Read aloud" playback in all three modes — via browser Web Speech API (AD-021)
+- [ ] Functional verification of Web Speech playback across Explain / Quiz / Summarise
 
 **Phase 4 — Polish**
 - [ ] Persistent study material loading / file upload

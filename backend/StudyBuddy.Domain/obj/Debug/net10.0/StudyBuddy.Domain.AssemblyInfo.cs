@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("StudyBuddy.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d68b017353e630e94e66c59f67f86cca0c8d27e6")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1f48ee9d3864776e01169ed99568502d9efc8a1b")]
 [assembly: System.Reflection.AssemblyProductAttribute("StudyBuddy.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("StudyBuddy.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

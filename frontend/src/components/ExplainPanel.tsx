@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { explain } from '../api/studyApi';
+import { PlayButton } from './PlayButton';
 
 interface ExplainPanelProps {
   studyMaterial: string;
@@ -71,6 +72,7 @@ export function ExplainPanel({ studyMaterial }: ExplainPanelProps) {
         <div className="result">
           <h3 className="result__title">Explanation</h3>
           <pre className="result__body">{explanation}</pre>
+          <PlayButton text={explanation} />
         </div>
       ) : null}
     </section>

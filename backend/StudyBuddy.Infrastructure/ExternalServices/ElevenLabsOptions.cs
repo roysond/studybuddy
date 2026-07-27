@@ -1,7 +1,7 @@
 namespace StudyBuddy.Infrastructure.ExternalServices;
 
 /// <summary>
-/// Settings placeholder for ElevenLabs TTS (integration deferred to a later phase).
+/// Settings for the ElevenLabs text-to-speech API.
 /// </summary>
 public sealed class ElevenLabsOptions
 {
@@ -12,4 +12,6 @@ public sealed class ElevenLabsOptions
     public string? ApiKey { get; set; }
 
     public string? VoiceId { get; set; }
+
+    public string ModelId { get; set; } = "eleven_multilingual_v2";
 }
