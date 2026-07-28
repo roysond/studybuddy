@@ -388,8 +388,10 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 **Why:** Royson also runs NOSYOR.M.I locally, which legitimately occupies Vite's default port 5173. Without a fixed port, StudyBuddy's Vite server would silently drift to 5174/5175/etc. whenever 5173 was taken, which quietly breaks CORS (the policy only allows one exact origin) and produced a confusing multi-round debugging session. A dedicated port removes the collision entirely; `strictPort: true` means if 5180 is ever unexpectedly occupied, Vite fails loudly instead of silently drifting again.
 **Implication:** StudyBuddy's frontend always runs at `http://localhost:5180`. If this port ever needs to change, both `vite.config.ts` and the CORS origin in `Program.cs` must be updated together.
 
-### AD-021 — TTS switched to browser Web Speech API; ElevenLabs kept as dormant alternative
-**Decision:** Audio playback uses the browser's built-in Web Speech API (`window.speechSynthesis`), entirely client-side. The ElevenLabs backend integration (`ISpeechService`, `ElevenLabsSpeechService`, `SpeechController`, `POST /api/speech`) remains in the codebase, fully working but unused.
+### AD-021 — TTS switched to browser Web Speech API (ElevenLabs since fully removed — see AD-024)
+> **Superseded in part by AD-024:** the ElevenLabs code described below as "kept dormant" was later deleted entirely. The Web Speech API decision still stands.
+
+**Decision:** Audio playback uses the browser's built-in Web Speech API (`window.speechSynthesis`), entirely client-side. The ElevenLabs backend integration (`ISpeechService`, `ElevenLabsSpeechService`, `SpeechController`, `POST /api/speech`) was initially kept in the codebase, fully working but unused.
 **Why:** ElevenLabs was built and verified working (AD-007 superseded), but its free tier caps at ~10,000 credits/month ≈ 1 credit per character — roughly 3 full Explain responses. Not viable for daily study use. Two earlier errors during integration were both plan limits, not code faults: `402 paid_plan_required` (free accounts can't use Voice Library voices via API — resolved by switching to a `premade` voice, Alice `Xb7hH8MSUJpSbSDYk0k2`), then `401 quota_exceeded`. Web Speech API is free, unlimited, and needs no API key or backend call; the tradeoff is a more robotic voice.
 **Why keep the ElevenLabs code:** It sits behind the `ISpeechService` abstraction with zero coupling to the tutoring modes — it costs nothing to leave in place and can be re-enabled by swapping the `PlayButton` implementation back if the plan is ever upgraded. This is a concrete payoff of the layer isolation in AD-001.
 **Implementation notes:** `PlayButton.tsx` chunks text (~200 chars, on sentence boundaries) because Chrome silently truncates long utterances; voices load asynchronously via the `voiceschanged` event; `interrupted`/`canceled` utterance errors are ignored since they fire on deliberate stop.
@@ -419,6 +421,15 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 **Why not Docker (yet):** Royson asked about containerising like NOSYOR.M.I. Deliberately deferred — for daily development Docker adds friction: hot reload inside containers needs volume mounts and polling config on macOS, container networking breaks the `localhost:5017` API base URL and the pinned CORS origin from AD-020, and the API key needs new plumbing. The script solves the actual annoyance (two terminals) with none of that.
 **When to revisit Docker:** when deploying, when PostgreSQL is actually wired up (scaffolded but unused per AD-006), or when someone else needs to run the project without installing .NET and Node.
 **Usage:** `chmod +x start.sh` once, then `./start.sh` from the repo root.
+
+### AD-024 — ElevenLabs layer fully removed from the codebase
+**Decision:** The entire ElevenLabs TTS layer was deleted rather than kept dormant. This reverses the "keep it in place" part of AD-021.
+**Why:** Royson chose a clean codebase over a reversible option he was unlikely to use — the Web Speech API plus his macOS Speak-selection workaround (AD-022) cover his needs, and the ElevenLabs free tier was never viable for daily study.
+**Removed (6 files deleted):** `ElevenLabsSpeechService.cs`, `ElevenLabsOptions.cs`, `ISpeechService.cs`, `SpeechRequest.cs`, `SpeechResult.cs`, `SpeechController.cs`.
+**Also cleaned:** ElevenLabs wiring stripped from `DependencyInjection.cs` (Configure, named HttpClient, service registration); `Microsoft.Extensions.Http` package reference dropped from `StudyBuddy.Infrastructure.csproj` (nothing else used HttpClient); `ElevenLabs` section removed from `appsettings.json` and `appsettings.Development.json`; `ELEVENLABS_API_KEY` / `ELEVENLABS_VOICE_ID` removed from `backend/.env.example`.
+**Verified 27 July 2026:** `dotnet build` succeeded; independent search confirmed zero remaining references to `ElevenLabs`, `ISpeechService`, `SpeechResult`, `SpeechRequest`, or `SpeechController` in source. Frontend (`PlayButton.tsx`, `useSpeechVoices.ts`) and all three tutoring plugins untouched.
+**Implication:** `POST /api/speech` no longer exists. Audio playback is entirely client-side. If ElevenLabs is ever wanted again it must be rebuilt from scratch — but AD-021's original prompt structure and the `ISpeechService` abstraction shape are documented here and in git history (commit `ec3ad88`) as a starting point.
+**Env vars no longer needed:** `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID` — safe to remove from the shell profile.
 
 ---
 
@@ -487,11 +498,11 @@ By building this app, Royson will directly experience:
 - [ ] SK Planner to route by intent
 - [ ] Verify planner picks the correct mode
 
-**Phase 3 — TTS**
-- [x] Real ElevenLabs client (replaced stub) — built and working, now dormant per AD-021
-- [x] Speech endpoint (`POST /api/speech`) returning audio bytes
-- [x] "Read aloud" playback in all three modes — via browser Web Speech API (AD-021)
-- [ ] Functional verification of Web Speech playback across Explain / Quiz / Summarise
+**Phase 3 — TTS** *(complete; ElevenLabs path built then removed)*
+- [x] ~~ElevenLabs client + `POST /api/speech`~~ — built and verified, then fully removed (AD-024)
+- [x] "Read aloud" playback in all three modes — browser Web Speech API, client-side only (AD-021)
+- [x] Voice picker + speed control, choice persisted in `localStorage`
+- [ ] Voice *quality* still unsatisfying in-browser — see AD-022 (workaround in use, not blocking)
 
 **Phase 4 — Polish**
 - [ ] Persistent study material loading / file upload
