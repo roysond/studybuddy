@@ -414,6 +414,12 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 
 **CURRENT WORKAROUND IN USE (good enough for now):** Royson generates the explanation in StudyBuddy, then highlights the text and triggers **macOS Speak selection** (System Settings → Accessibility → Read & Speak → Speak selection, toggled on). Because this is a system-level feature rather than a browser one, it *can* use Siri voices — giving Claude's tutoring content with Siri's delivery quality. The in-app Web Speech playback remains available but is not his preferred path. **This is acceptable and not blocking** — revisit only if he wants in-app audio to match that quality, which would mean the Kokoro/transformers.js local neural TTS build.
 
+### AD-023 — Single start script for local dev; Docker deferred
+**Decision:** `start.sh` at the repo root launches both the backend (`dotnet run`, port 5017) and the frontend (`npm run dev`, port 5180) together; one Ctrl+C shuts both down. It pre-checks both ports and fails with a clear message if either is occupied.
+**Why not Docker (yet):** Royson asked about containerising like NOSYOR.M.I. Deliberately deferred — for daily development Docker adds friction: hot reload inside containers needs volume mounts and polling config on macOS, container networking breaks the `localhost:5017` API base URL and the pinned CORS origin from AD-020, and the API key needs new plumbing. The script solves the actual annoyance (two terminals) with none of that.
+**When to revisit Docker:** when deploying, when PostgreSQL is actually wired up (scaffolded but unused per AD-006), or when someone else needs to run the project without installing .NET and Node.
+**Usage:** `chmod +x start.sh` once, then `./start.sh` from the repo root.
+
 ---
 
 ## 8. THE TTS LAYER — ELEVENLABS (PLANNED)
