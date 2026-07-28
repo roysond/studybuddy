@@ -1,8 +1,8 @@
 # ==========================================
 # .NET / C# Backend
 # ==========================================
-backend/bin/
-backend/obj/
+**/bin/
+**/obj/
 backend/.vs/
 backend/*.user
 backend/**/*.user
