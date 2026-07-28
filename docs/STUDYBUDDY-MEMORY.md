@@ -397,14 +397,22 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 
 ### AD-022 — OPEN ISSUE: Web Speech voice quality unresolved (paused 27 July 2026)
 **State:** Voice + speed picker is built and working (`useSpeechVoices` hook + `PlayButton`, choice persisted in `localStorage`, speed 0.5x–1.5x). Playback functions correctly. **The problem is voice quality only** — the available voices sound flat and robotic.
-**What was tried:** Royson downloaded macOS Enhanced/Premium voices via System Settings → Accessibility → **Read & Speak** (renamed from "Spoken Content" in his macOS version) → System Voice → Manage Voices. The downloaded voices do **not** appear in the app's dropdown — it only lists basic voices (e.g. "Shelley (English (United Kingdom))").
-**Untested next steps when resuming (in order):**
-1. Fully quit Chrome (Cmd+Q, not just the tab) and relaunch — Chrome caches the system voice list at launch, so voices installed mid-session won't appear.
-2. Open `http://localhost:5180` in **Safari** — Safari exposes the full macOS voice set; Chrome on macOS is known to expose only a subset, and downloaded Premium/Enhanced variants are often excluded.
+**What was tried:** Royson downloaded macOS voices via System Settings → Accessibility → **Read & Speak** (renamed from "Spoken Content" in his macOS version) → System Voice → Manage Voices. The downloaded voices did **not** appear in the app's dropdown — it only listed basic voices (e.g. "Shelley (English (United Kingdom))").
+
+**ROOT CAUSE IDENTIFIED:** He downloaded **Siri voices**. Apple does not expose Siri voices to the Web Speech API — or even to native third-party apps via `AVSpeechSynthesizer`. They are reserved for system use. No amount of code change will surface them; this is an Apple platform restriction, not a StudyBuddy bug.
+
+**CORRECTION — earlier guidance in this file was wrong:** an earlier version of this entry said to try Safari because it exposes more voices. That is backwards. **Chrome and Edge list all installed macOS voices; Safari is the browser that restricts them.** Stay on Chrome.
+
+**Fix to try when resuming:**
+1. Download **Enhanced** or **Premium** variants of the *regular, non-Siri* voices — Ava, Allison, Tom, Samantha, Evan, Joelle, Nathan. These are ordinary system voices that Chrome can see, and the Enhanced versions are substantially better than the basic ones.
+2. Fully quit Chrome (Cmd+Q, not just the tab) and relaunch — Chrome caches the system voice list at launch, so voices installed mid-session won't appear.
 3. Diagnostic — run in DevTools console to see what the browser can actually access:
    `speechSynthesis.getVoices().filter(v => v.lang.startsWith('en')).forEach(v => console.log(v.name, '|', v.lang, '|', v.localService ? 'local' : 'network'));`
-4. If Chrome genuinely can't reach the good voices: either use Safari for study sessions, or build the local neural TTS option (Kokoro via transformers.js — runs fully in-browser, free and unlimited, high quality, but ~300MB model download and a significantly bigger build).
-**Do not change any code until Royson confirms** — he paused here deliberately.
+4. If the Enhanced non-Siri voices still aren't good enough: build the local neural TTS option (Kokoro via transformers.js — runs fully in-browser, free and unlimited, high quality, but ~300MB model download and a significantly bigger build).
+
+**No code change is required for steps 1–3** — the voice picker already lists whatever the browser exposes.
+
+**CURRENT WORKAROUND IN USE (good enough for now):** Royson generates the explanation in StudyBuddy, then highlights the text and triggers **macOS Speak selection** (System Settings → Accessibility → Read & Speak → Speak selection, toggled on). Because this is a system-level feature rather than a browser one, it *can* use Siri voices — giving Claude's tutoring content with Siri's delivery quality. The in-app Web Speech playback remains available but is not his preferred path. **This is acceptable and not blocking** — revisit only if he wants in-app audio to match that quality, which would mean the Kokoro/transformers.js local neural TTS build.
 
 ---
 
