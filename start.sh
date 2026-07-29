@@ -62,4 +62,7 @@ echo "Press Ctrl+C to stop both."
 echo ""
 
 # Keep the script alive until either process exits.
-wait -n "$backend_pid" "$frontend_pid"
+# Note: macOS ships bash 3.2, which has no `wait -n`, so poll instead.
+while kill -0 "$backend_pid" 2>/dev/null && kill -0 "$frontend_pid" 2>/dev/null; do
+  sleep 1
+done
