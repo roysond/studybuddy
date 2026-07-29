@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.SemanticKernel;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -86,13 +87,33 @@ static void ConfigureSemanticKernel(WebApplicationBuilder builder)
     var modelId = openRouter.Model;
     var endpoint = new Uri(openRouter.BaseUrl);
 
+    // .NET validates certificate revocation status by default. On networks that block
+    // OCSP/CRL endpoints this fails with RevocationStatusUnknown even though the
+    // certificate is valid. In Development only, skip the revocation check.
+    // Chain and hostname validation remain fully enforced.
+    HttpClient? httpClient = null;
+
+    if (builder.Environment.IsDevelopment())
+    {
+        var handler = new SocketsHttpHandler
+        {
+            SslOptions = new System.Net.Security.SslClientAuthenticationOptions
+            {
+                CertificateRevocationCheckMode = X509RevocationMode.NoCheck
+            }
+        };
+
+        httpClient = new HttpClient(handler);
+    }
+
     // Custom OpenAI-compatible endpoints (OpenRouter) are experimental in SK.
 #pragma warning disable SKEXP0010
     var kernelBuilder = builder.Services.AddKernel();
     kernelBuilder.AddOpenAIChatCompletion(
         modelId: modelId,
         apiKey: apiKey,
-        endpoint: endpoint);
+        endpoint: endpoint,
+        httpClient: httpClient);
 #pragma warning restore SKEXP0010
 
     kernelBuilder.Plugins.AddFromType<ExplainPlugin>();
