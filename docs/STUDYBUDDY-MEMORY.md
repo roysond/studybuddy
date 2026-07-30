@@ -66,7 +66,7 @@
 | AI Model | Claude Haiku via OpenRouter (`anthropic/claude-haiku-4-5`) | Explanations (and later quizzes/summaries) | ✅ Working path |
 | Text-to-Speech | Browser Web Speech API (`window.speechSynthesis`) | Reads Claude's responses aloud, client-side only | ✅ Built — voice picker + speed control. ElevenLabs was built then fully removed (AD-021, AD-024) |
 | Monitoring | SK Telemetry + OpenTelemetry Console exporter | Logs every Claude call in dev | ✅ Wired |
-| Dev observability | `IFunctionInvocationFilter` → in-memory store → `/dev` dashboard | Live token/latency/cost view in the UI | ✅ Built (AD-026); cost constant needs fixing |
+| Dev observability | `IFunctionInvocationFilter` → in-memory store → `/dev` dashboard | Live token/latency/cost view, eval and tutoring traffic separated | ✅ Built (AD-026), defects fixed (AD-027) |
 | Evaluation | `Microsoft.Extensions.AI.Evaluation` + `.Quality` 10.8.0 | LLM-as-judge quality scoring per mode, on demand | ✅ Built (AD-026) |
 | Database | PostgreSQL via EF Core (`Npgsql.EntityFrameworkCore.PostgreSQL`) | Study material + session history | ⏳ DbContext scaffolded; not actively used yet |
 | Secrets | Env vars + `appsettings.Development.json` (gitignored) | Local keys never committed | ✅ Configured |
@@ -461,11 +461,30 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 
 **Cost clarification (Royson's concern, resolved):** the 4-second polling costs **nothing**. Both telemetry endpoints are pure in-memory reads — no Kernel invocation, no OpenRouter call, no tokens. The displayed cost is arithmetic over token counts already recorded; it only grows when a tutoring mode is used or evals are run. The 4-second refresh merely redraws the same figure.
 
-**Two real defects found on review (fix drafted 29 July, not yet applied):**
-1. **Cost constant wrong by ~100x** — `EstimatedCostUsdPer1kTokens = 0.25m` implies $250/M tokens. Actual Haiku 4.5 on OpenRouter: **$1/M input, $5/M output**. Dashboard showed $2.5185 for ~10,074 tokens; true cost ≈ **$0.026**. Fix moves rates into `OpenRouterOptions` (config-driven) and calculates input/output separately.
-2. **Eval traffic recorded as tutoring traffic** — because `EvalRunnerService` calls the real services through the same Kernel, the telemetry filter tags eval calls as ordinary user traffic. Fix introduces `IEvalExecutionContext` (AsyncLocal depth counter) so `EvalRunnerService.RunAsync` marks its scope and the filter can stamp `TelemetryEntry.Source` as `Tutoring` or `Eval`; `TelemetrySummary` then reports the two separately.
+**Two real defects found on review — both FIXED 29 July 2026 (see AD-027).**
 
-**Also noted:** `useTelemetryPolling` keeps last-good data on a failed poll but leaves the error banner up with no staleness indicator — hence the confusing "Failed to fetch" shown alongside valid numbers. An `isStale` flag is part of the same fix.
+---
+
+### AD-027 — Dashboard defects fixed: cost accuracy + eval/tutoring separation
+**Both AD-026 defects are resolved.** Build verified (`dotnet build` + `npm run build`) and independently confirmed by file inspection in Cowork. Tutoring plugins, services, and prompt templates untouched.
+
+**Fix 1 — cost accuracy (was ~100x too high):**
+- `EstimatedCostUsdPer1kTokens = 0.25m` deleted entirely
+- Pricing moved to configuration: `OpenRouterOptions.InputCostPerMillionUsd` (default `1.00`) and `OutputCostPerMillionUsd` (default `5.00`), mirrored in `appsettings.json` under the `OpenRouter` section — so a pricing change is now a config edit, not a code change
+- `InMemoryTelemetryStore` injects `IOptions<OpenRouterOptions>` (safe — it's a Singleton) and computes cost via `CalculateCostUsd(tokensIn, tokensOut)`, charging input and output at their **separate** rates rather than one blended per-1k figure
+
+**Fix 2 — eval traffic no longer counted as tutoring traffic:**
+- New `IEvalExecutionContext` (Application) with `bool IsEvalRun` and `IDisposable BeginEvalRun()`; implemented in Infrastructure as `EvalExecutionContext` using an `AsyncLocal<int>` **depth counter** so nested scopes behave correctly
+- `EvalRunnerService.RunAsync` opens the scope for its whole body (`using var _ = _evalExecutionContext.BeginEvalRun();`), so every downstream Kernel call inherits the marker via async flow
+- `TelemetryFunctionInvocationFilter` injects the context and stamps `TelemetryEntry.Source` as `TelemetrySource.Eval` or `TelemetrySource.Tutoring`
+- `GetSummary` partitions today's entries by source: `CallsToday` / `AverageLatencyMs` / `TotalTokens` / `EstimatedCostUsd` are now **tutoring-only**, with `EvalCallsToday` / `EvalTotalTokens` / `EvalEstimatedCostUsd` reported alongside
+- Registered `AddSingleton<IEvalExecutionContext, EvalExecutionContext>()`
+
+**Why this design:** the marker is ambient rather than a parameter threaded through the services, so `IExplainService`/`IQuizService`/`ISummariseService` and their plugins stay completely unaware that evaluation exists. That preserves the layer isolation from AD-001 — the eval suite depends on the tutoring services, never the reverse.
+
+**Frontend:** `TelemetryEntry` gained `source`, `TelemetrySummary` gained the three eval fields; dashboard shows a "Source" column, relabelled "Est. cost (tutoring)", and added an "Eval cost (N runs)" card. `useTelemetryPolling` now returns `isStale` — a failed poll that still has last-good data renders as a soft "showing last known data" notice instead of a bare error, fixing the confusing "Failed to fetch" appearing beside valid numbers.
+
+**Learning note for the eval discussion:** this is a good concrete example of *observability hygiene* — an eval suite that pollutes production metrics makes both numbers useless. Separating traffic by source is standard practice in real eval tooling, and being able to explain why is the kind of thing eval-engineering interviews probe.
 
 ---
 
@@ -561,9 +580,9 @@ By building this app, Royson will directly experience:
 - [x] `GET /api/dev/telemetry/recent` + `GET /api/dev/telemetry/summary`
 - [x] `POST /api/dev/evals/run` + `GET /api/dev/evals/latest` — trigger and retrieve eval results
 - [x] Developer route (`/dev`) in the frontend, separate from student-facing screens
-- [ ] **Fix cost constant** — currently ~100x too high (AD-026 defect 1); prompt drafted, not applied
-- [ ] **Separate eval traffic from tutoring traffic** in telemetry (AD-026 defect 2); prompt drafted, not applied
-- [ ] Add staleness indicator to the polling hook (AD-026)
+- [x] **Cost accuracy fixed** — pricing config-driven, input/output charged separately (AD-027)
+- [x] **Eval traffic separated from tutoring traffic** via `IEvalExecutionContext` + `TelemetryEntry.Source` (AD-027)
+- [x] Staleness indicator (`isStale`) in the polling hook (AD-027)
 
 ---
 
@@ -688,17 +707,20 @@ Cowork will read `docs/STUDYBUDDY-MEMORY.md` directly from the local folder — 
 
 **Additionally built 29 July (AD-026):** the Developer Dashboard at `/dev` — live telemetry (4s polling, in-memory, zero cost) plus on-demand evaluation using `Microsoft.Extensions.AI.Evaluation`. This covers Phases 5 and 6, built out of sequence in a separate Cursor session.
 
-### START HERE NEXT SESSION — one task, already scoped
+### START HERE NEXT SESSION — a teaching pass, not a code change
 
-**Apply the drafted fix for the two AD-026 defects.** A complete Cursor prompt was drafted 29 July but **not yet applied**:
-1. Cost constant is ~100x too high — move rates to `OpenRouterOptions` config, split input/output pricing
-2. Eval traffic is recorded as tutoring traffic — add `IEvalExecutionContext` (AsyncLocal), stamp `TelemetryEntry.Source`, report the two separately in `TelemetrySummary`
-Plus a staleness indicator in `useTelemetryPolling`.
+**The dashboard is now correct and complete** (AD-026 built, AD-027 defects fixed). Nothing is broken.
 
-Royson wanted a fresh start on this and to **work through it step by step, learning the traceability and evaluation concepts as we go** — not just applying it blind. Treat it as a teaching pass, not only a code change.
+What Royson actually asked for: to **work through traceability and evaluation step by step and understand how they work**, with a fresh start. He is new to these concepts, so the goal is comprehension, not more building. Good starting points:
+- Walk through what the `/dev` dashboard is actually showing him, field by field — what a token is, why input and output cost differently, what latency includes, why polling is free
+- Explain what each evaluator measures in plain language: Groundedness (did it stick to the source material?), Relevance, Completeness, Fluency, Coherence, Truthfulness
+- Explain LLM-as-judge — that scoring is itself an LLM call, which is why eval runs cost real money and are button-gated
+- Then run the evals together and interpret the actual scores rather than just reading numbers
+
+**Note:** he has previously said this material goes over his head when explained too densely. Keep it concrete, one idea at a time, and check in rather than delivering long explanations.
 
 ### Then, in rough priority order:
-1. **Document eval failure modes** (Phase 5 remaining item) — pick a metric, describe the test set, name a specific failure it caught. This is the single most career-relevant deliverable for the AI-evals roles Royson is targeting.
+1. **Document eval failure modes** (Phase 5 remaining item) — pick a metric, describe the test set, name a specific failure it caught. This is the single most career-relevant deliverable for the AI-evals roles Royson is targeting, and follows naturally from the teaching pass above.
 2. **SK Planner** (Phase 2) — route by intent across the three plugins instead of clicking a tab. The remaining Semantic Kernel learning milestone.
 3. **Secrets boundary** (AD-014) — move `OPENROUTER_API_KEY` to `dotnet user-secrets` or a shell env var.
 4. **In-app TTS quality** (AD-022) — Kokoro/transformers.js local neural TTS, if the macOS Speak-selection workaround stops being good enough.
