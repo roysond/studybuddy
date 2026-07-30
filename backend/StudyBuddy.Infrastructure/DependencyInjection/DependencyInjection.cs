@@ -1,13 +1,19 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.SemanticKernel;
+using StudyBuddy.Application.Eval;
+using StudyBuddy.Application.Interfaces;
+using StudyBuddy.Infrastructure.Evaluation;
 using StudyBuddy.Infrastructure.ExternalServices;
 using StudyBuddy.Infrastructure.Persistence;
+using StudyBuddy.Infrastructure.Telemetry;
 
 namespace StudyBuddy.Infrastructure.DependencyInjection;
 
 /// <summary>
-/// Registers Infrastructure-layer services (PostgreSQL persistence, external API options).
+/// Registers Infrastructure-layer services (PostgreSQL persistence, external API options,
+/// developer telemetry, and on-demand evaluation).
 /// </summary>
 public static class DependencyInjection
 {
@@ -27,6 +33,23 @@ public static class DependencyInjection
                 options.UseNpgsql(connectionString));
         }
 
+        RegisterDeveloperDashboard(services);
+
         return services;
+    }
+
+    private static void RegisterDeveloperDashboard(IServiceCollection services)
+    {
+        // Shared by telemetry and evaluation — ambient flag for tagging Kernel calls.
+        services.AddSingleton<IEvalExecutionContext, EvalExecutionContext>();
+
+        // Telemetry half — live capture, independent of evals and tutoring plugins.
+        services.AddSingleton<ITelemetryStore, InMemoryTelemetryStore>();
+        services.AddSingleton<IFunctionInvocationFilter, TelemetryFunctionInvocationFilter>();
+
+        // Evaluation half — on-demand only, independent of telemetry.
+        services.AddSingleton<IEvalResultStore, InMemoryEvalResultStore>();
+        services.AddSingleton<IEvalTestSetProvider, HardcodedEvalTestSetProvider>();
+        services.AddScoped<IEvalRunnerService, EvalRunnerService>();
     }
 }

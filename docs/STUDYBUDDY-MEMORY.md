@@ -1,7 +1,7 @@
 # STUDYBUDDY — Project Memory & Architecture Plan
 > This file is the context anchor for all future sessions on this project.
 > Start every new chat by sharing this file so no context is lost.
-> Last updated: 27 July 2026
+> Last updated: 29 July 2026
 
 ---
 
@@ -30,14 +30,14 @@
 
 ## 2. THE THREE MODES
 
-### Mode 1 — Explain ✅ (backend live)
+### Mode 1 — Explain ✅ (live end-to-end)
 - User pastes a concept, topic, or question from the course
 - Claude reads the loaded study material and explains it in plain tutor language
 - Explanation appears as text on screen
 - ElevenLabs reads the explanation aloud with natural intonation and emphasis *(not built yet)*
 - Goal: Make Claude explain things the way a real tutor would, not like documentation
 
-### Mode 2 — Quiz ✅ (backend live)
+### Mode 2 — Quiz ✅ (live end-to-end)
 - User requests a quiz on a topic or section
 - Claude generates 3 questions from the loaded study material
 - User types their answers
@@ -45,7 +45,7 @@
 - ElevenLabs reads the feedback aloud *(not built yet)*
 - Goal: Active recall — the fastest way to retain information
 
-### Mode 3 — Summarise ✅ (backend live)
+### Mode 3 — Summarise ✅ (live end-to-end)
 - User pastes a full section of study material
 - Claude condenses it into the 5 most important key points
 - Summary appears as text on screen
@@ -60,15 +60,18 @@
 |---|---|---|---|
 | Backend | .NET 10 / C# | API, orchestration | ✅ Scaffolded |
 | Architecture | Clean Architecture (4 projects) | SOLID layer separation | ✅ In place |
-| Frontend | React 19 + TypeScript + Vite | UI | ⏳ Not started |
+| Frontend | React 19 + TypeScript + Vite | UI | ✅ Built — 3 mode panels + shared study material input, dev port 5180 (AD-020) |
 | AI Orchestration | Microsoft.SemanticKernel 1.78 | Plugins, prompts, future Planner | ✅ Wired |
 | AI Connector | Microsoft.SemanticKernel.Connectors.OpenAI | OpenAI-compatible client → OpenRouter | ✅ Wired |
 | AI Model | Claude Haiku via OpenRouter (`anthropic/claude-haiku-4-5`) | Explanations (and later quizzes/summaries) | ✅ Working path |
-| Text-to-Speech | ElevenLabs API (free tier) | Reads Claude's responses aloud | ⏳ Stub options + HttpClient only |
+| Text-to-Speech | Browser Web Speech API (`window.speechSynthesis`) | Reads Claude's responses aloud, client-side only | ✅ Built — voice picker + speed control. ElevenLabs was built then fully removed (AD-021, AD-024) |
 | Monitoring | SK Telemetry + OpenTelemetry Console exporter | Logs every Claude call in dev | ✅ Wired |
+| Dev observability | `IFunctionInvocationFilter` → in-memory store → `/dev` dashboard | Live token/latency/cost view in the UI | ✅ Built (AD-026); cost constant needs fixing |
+| Evaluation | `Microsoft.Extensions.AI.Evaluation` + `.Quality` 10.8.0 | LLM-as-judge quality scoring per mode, on demand | ✅ Built (AD-026) |
 | Database | PostgreSQL via EF Core (`Npgsql.EntityFrameworkCore.PostgreSQL`) | Study material + session history | ⏳ DbContext scaffolded; not actively used yet |
 | Secrets | Env vars + `appsettings.Development.json` (gitignored) | Local keys never committed | ✅ Configured |
-| Containerisation | Docker Compose | Later | ⏳ Not started |
+| Local dev startup | `start.sh` + `studybuddy` shell alias | One command starts backend + frontend | ✅ Built (AD-023) |
+| Containerisation | Docker Compose | Deferred — see AD-023 | ⏳ Not started |
 
 **Important stack corrections vs early draft:**
 - **Claude access = OpenRouter**, not Anthropic SDK direct (for now). SK uses the OpenAI connector pointed at OpenRouter’s OpenAI-compatible endpoint.
@@ -130,7 +133,7 @@ ElevenLabs returns audio
 React displays text + plays audio simultaneously
 ```
 
-### What is implemented today (Phase 1 backend):
+### What is implemented today (Explain):
 
 ```
 POST /api/study/explain  { userMessage, studyMaterial }
@@ -152,7 +155,7 @@ JSON { explanation: "..." }
 
 **Not yet in the path:** SK Planner, ElevenLabs TTS, React UI.
 
-### What is implemented today (Quiz, Phase 2 start):
+### What is implemented today (Quiz):
 
 ```
 POST /api/study/quiz/questions  { topic, studyMaterial }
@@ -320,7 +323,7 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 - `ELEVENLABS_VOICE_ID` (future)
 - `ConnectionStrings__DefaultConnection` (when DB is used)
 
-### AD-009 — Frontend not started in Phase 1
+### AD-009 — Frontend not started in Phase 1 *(superseded — frontend now built, see AD-020/AD-023)*
 **Decision:** No React work until Explain API is proven manually (curl / `.http` file).  
 **Test helper:** `backend/StudyBuddy.API/StudyBuddy.API.http`  
 **Local URL:** `http://localhost:5017` (from `launchSettings.json`)
@@ -374,7 +377,7 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 **How results are viewed:** `Microsoft.Extensions.AI.Evaluation.Reporting` caches eval run results to disk. Install the CLI once via `dotnet tool install Microsoft.Extensions.AI.Evaluation.Console`, then generate a report with `dotnet aieval report --path <cache folder> --output report.html --open` — produces an interactive HTML report (drill-down from high-level scores to individual test cases, historical trend tracking across runs) that opens in the browser. This is separate from SK Telemetry, which prints token/latency/call info to the console in real time. Both are developer-facing tools — neither appears in the StudyBuddy React frontend, same as how LangSmith/Datadog dashboards work at companies (internal tooling, not product UI).
 **Status:** Not yet started — logged as Phase 5 in Section 11.
 
-### AD-019 — Developer Dashboard: deferred until after the student-facing frontend
+### AD-019 — Developer Dashboard: deferred until after the student-facing frontend *(SUPERSEDED — built 29 July, see AD-026)*
 **Decision:** A "Developer" tab/view (separate from the student-facing Explain/Quiz/Summarise screens) showing live telemetry and evaluation results was discussed and architected, but deliberately deferred. Sequencing: Phase 1 (student-facing React frontend) ships first, so Royson can see the app work for its primary purpose end-to-end; the Developer Dashboard becomes its own later phase (Phase 6) once that's solid.
 **Why:** Building the dashboard now would mean scaffolding the React app shell around developer tooling before the actual product exists. Royson explicitly wants to see the primary-purpose app running first, then layer in developer-facing tooling.
 **Architecture, for when this phase starts (do not build yet):**
@@ -431,27 +434,61 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 **Implication:** `POST /api/speech` no longer exists. Audio playback is entirely client-side. If ElevenLabs is ever wanted again it must be rebuilt from scratch — but AD-021's original prompt structure and the `ISpeechService` abstraction shape are documented here and in git history (commit `ec3ad88`) as a starting point.
 **Env vars no longer needed:** `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID` — safe to remove from the shell profile.
 
+### AD-025 — Certificate revocation check disabled in Development (SSL fix)
+**Symptom (29 July 2026):** Every OpenRouter call suddenly failed — the app had been working the day before, no relevant code had changed. Error: `AuthenticationException: The remote certificate is invalid because of errors in the certificate chain: RevocationStatusUnknown`, surfacing as `HttpOperationException: The SSL connection could not be established`.
+**Diagnosis:** `curl -I https://openrouter.ai/api/v1` returned 200 OK, proving the network could reach OpenRouter and the certificate itself was fine. The difference: curl does not perform certificate revocation checks by default, .NET does. The network was reaching OpenRouter on 443 but could not reach the OCSP/CRL endpoints that answer "has this certificate been revoked?" — so .NET treated the unknown status as a validation failure. Retrying did not help (not a transient OCSP outage).
+**Fix:** In `Program.cs` → `ConfigureSemanticKernel`, when `builder.Environment.IsDevelopment()`, Semantic Kernel is given a custom `HttpClient` built on a `SocketsHttpHandler` with `SslOptions.CertificateRevocationCheckMode = X509RevocationMode.NoCheck`, passed via the `httpClient:` parameter of `AddOpenAIChatCompletion`.
+**Scope and security note:** This disables **only** the revocation lookup, **only** for the OpenRouter client, **only** in Development. Certificate chain and hostname validation remain fully enforced — this is *not* the "trust any certificate" switch. Production behaviour is unchanged.
+**If this resurfaces:** it is environmental, not a code bug. Root cause is the network blocking OCSP/CRL (common on ISP-filtered, corporate, VPN, or DNS-filtered connections). Testing on a phone hotspot isolates it. If the app is ever deployed, the same wall would appear in production and should be solved at the network level rather than by carrying this workaround forward.
+**Related fix, same commit:** `start.sh` originally used `wait -n`, which requires bash 4+. macOS ships bash 3.2, so the script exited immediately after starting both servers and then killed them. Replaced with a `kill -0` polling loop.
+
+### AD-026 — Phases 5 and 6 built together: Automated Evaluation + Developer Dashboard
+**Decision:** Both the eval layer (Phase 5 / AD-018) and the Developer Dashboard (Phase 6 / AD-019) were built on 29 July 2026, ahead of the sequencing in AD-019. This supersedes AD-019's "deferred, do not build yet" status — its prerequisite (the Phase 1 student frontend) was already met.
+**Built in a separate Cursor session** driven from a different project folder, so Cowork had no context until Royson flagged it. Code was then scanned and reviewed here.
+
+**Evaluation half (Phase 5):**
+- Packages: `Microsoft.Extensions.AI.Evaluation` 10.8.0 + `Microsoft.Extensions.AI.Evaluation.Quality` 10.8.0 (Infrastructure)
+- `IEvalRunnerService` / `EvalRunnerService` — calls the real Explain/Quiz/Summarise services (does not duplicate their logic), then scores outputs with a `CompositeEvaluator`: `GroundednessEvaluator`, `FluencyEvaluator`, `CoherenceEvaluator`, and the experimental `RelevanceTruthAndCompletenessEvaluator` (needs `#pragma warning disable AIEVAL001`)
+- `IEvalTestSetProvider` / `HardcodedEvalTestSetProvider` — curated test cases per mode; `IEvalResultStore` / `InMemoryEvalResultStore` caches the last run
+- Endpoints: `POST /api/dev/evals/run`, `GET /api/dev/evals/latest` (`DevEvalsController`)
+- **Button-driven only, never polled** — correct, since each run makes many real LLM calls (mode outputs + LLM-as-judge scoring)
+
+**Telemetry half (Phase 6):**
+- `ITelemetryStore` / `InMemoryTelemetryStore` — thread-safe bounded ring, max 200 entries
+- `TelemetryFunctionInvocationFilter` — an SK `IFunctionInvocationFilter` capturing latency and token usage **without modifying any plugin code**; uses `AsyncLocal` so nested prompt calls attribute usage to the outermost tracked mode
+- Endpoints: `GET /api/dev/telemetry/recent`, `GET /api/dev/telemetry/summary` (`DevTelemetryController`)
+- Frontend: `DeveloperDashboard.tsx` at route `/dev`, `useTelemetryPolling` (4s interval), `devApi.ts` kept separate from `studyApi.ts`
+
+**Cost clarification (Royson's concern, resolved):** the 4-second polling costs **nothing**. Both telemetry endpoints are pure in-memory reads — no Kernel invocation, no OpenRouter call, no tokens. The displayed cost is arithmetic over token counts already recorded; it only grows when a tutoring mode is used or evals are run. The 4-second refresh merely redraws the same figure.
+
+**Two real defects found on review (fix drafted 29 July, not yet applied):**
+1. **Cost constant wrong by ~100x** — `EstimatedCostUsdPer1kTokens = 0.25m` implies $250/M tokens. Actual Haiku 4.5 on OpenRouter: **$1/M input, $5/M output**. Dashboard showed $2.5185 for ~10,074 tokens; true cost ≈ **$0.026**. Fix moves rates into `OpenRouterOptions` (config-driven) and calculates input/output separately.
+2. **Eval traffic recorded as tutoring traffic** — because `EvalRunnerService` calls the real services through the same Kernel, the telemetry filter tags eval calls as ordinary user traffic. Fix introduces `IEvalExecutionContext` (AsyncLocal depth counter) so `EvalRunnerService.RunAsync` marks its scope and the filter can stamp `TelemetryEntry.Source` as `Tutoring` or `Eval`; `TelemetrySummary` then reports the two separately.
+
+**Also noted:** `useTelemetryPolling` keeps last-good data on a failed poll but leaves the error banner up with no staleness indicator — hence the confusing "Failed to fetch" shown alongside valid numbers. An `isStale` flag is part of the same fix.
+
 ---
 
-## 8. THE TTS LAYER — ELEVENLABS (PLANNED)
+## 8. THE TTS LAYER — BROWSER WEB SPEECH API
 
-- ElevenLabs has a free tier — sufficient for personal study use
-- Every text response from Claude will be passed to ElevenLabs after generation
-- ElevenLabs returns an audio file or stream
-- React plays the audio while the text is visible on screen simultaneously
-- User reads along while hearing it — mirrors real tutor experience
+**Current implementation (client-side only, no backend involvement):**
+- Each result panel renders a `PlayButton` with a "Read aloud" control, a voice dropdown, and a 0.5x–1.5x speed slider
+- `useSpeechVoices` hook loads the browser's available English voices and persists the chosen one in `localStorage`
+- Text is chunked to ~200 characters on sentence boundaries, because Chrome silently truncates long utterances
+- Files: `frontend/src/components/PlayButton.tsx`, `frontend/src/hooks/useSpeechVoices.ts`
 
-**Why ElevenLabs specifically:**
-- Best-in-class intonation and natural emphasis
-- Simple REST API — easy to integrate into .NET
-- Free tier available — no cost to start
+**Why not ElevenLabs (it was built, then removed):**
+- ElevenLabs was fully implemented and verified working (`ISpeechService`, `POST /api/speech`), then deleted — see AD-021 and AD-024
+- Free tier caps at ~10,000 credits/month ≈ 1 credit per character, roughly 3 full Explain responses. Not viable for daily study.
+- Two errors hit during integration were both plan limits, not code faults: `402 paid_plan_required` (free accounts can't use Voice Library voices via API) then `401 quota_exceeded`
 
-**Important to know:**
-- Claude cannot generate audio — text only
-- Anthropic does not have a TTS API
-- ElevenLabs is a separate service called after Claude responds
+**Known limitation — voice quality (AD-022):**
+- Browser voices sound flat. Apple blocks Siri voices from the Web Speech API entirely (and from native third-party apps too), so the best macOS voices are unreachable from Chrome.
+- Chrome and Edge expose all installed macOS voices; Safari exposes fewer. Stay on Chrome.
+- **Workaround in daily use:** generate the explanation in StudyBuddy, highlight the text, and trigger macOS **Speak selection** — a system-level feature, so it *can* use Siri voices.
+- Open upgrade path if that stops being enough: Kokoro via transformers.js, a local neural TTS model running fully in-browser — free, unlimited, high quality, but ~300MB model download and a significantly larger build.
 
-**Current code state:** options + HttpClient stub only in Infrastructure. No audio endpoint yet.
+**Still true:** Claude cannot generate audio; Anthropic has no TTS API. Any spoken output comes from a separate service or the OS.
 
 ---
 
@@ -459,9 +496,11 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 
 The app is source-agnostic — it never connects to any external platform directly. All content arrives as plain text through one of these methods:
 
-**Method 1 — Copy-paste (start here):** User copies any text from any source and pastes it into the study material input. **Today the API accepts it as `studyMaterial` on each explain request.**
-**Method 2 — File upload (Phase 4 enhancement):** `.txt` / `.md` upload.
-**Method 3 — URL fetch (future consideration):** Public URL fetch only.
+**Method 1 — Copy-paste (in use):** ✅ The frontend has **one shared study material textarea** owned by `App.tsx` and passed down to all three mode panels, so material is pasted once per session and reused across Explain, Quiz, and Summarise. Every API call sends it as `studyMaterial`.
+**Method 2 — File upload (Phase 4 enhancement):** `.txt` / `.md` upload. Not built.
+**Method 3 — URL fetch (future consideration):** Public URL fetch only. Not built.
+
+**Note on statelessness:** the app holds nothing between page refreshes — material lives in React state only. Royson confirmed on 29 July that this is fine; he prefers pasting fresh each session, so persistence (Phase 4 / AD-006) is deliberately not being pursued.
 
 **What the app will never do:** Log into any platform on the user's behalf, scrape authenticated pages, or try to access content behind a paywall.
 
@@ -471,13 +510,13 @@ The app is source-agnostic — it never connects to any external platform direct
 
 By building this app, Royson will directly experience:
 
-1. **SK Plugin definition** — ✅ started with ExplainPlugin
+1. **SK Plugin definition** — ✅ all three plugins built (Explain, Quiz, Summarise), including a two-function plugin (QuizPlugin)
 2. **SK Planner routing** — ⏳ next major SK learning milestone — Quiz and Summarise plugins are both done, so this is now the immediate next step
-3. **Prompt Templates** — ✅ ExplainPromptTemplate in place
+3. **Prompt Templates** — ✅ four templates across three modes, including conditional template selection (with/without a user question or topic)
 4. **SK Telemetry** — ✅ console OTel wired for Claude calls
-5. **Multi-service orchestration** — ⏳ Claude done; ElevenLabs next
+5. **Multi-service orchestration** — ✅ experienced via the ElevenLabs build (external REST API behind an Application-layer abstraction), even though that layer was later removed (AD-024). The lesson landed: clean isolation made both adding *and* deleting it low-risk.
 6. **Claude API behaviour** — ✅ via OpenRouter + Haiku 4.5
-7. **Eval literacy** — ⏳ Phase 5 (AD-018): defining metrics, building a test set, automated grading via `Microsoft.Extensions.AI.Evaluation`. Directly relevant to "AI evals engineer" / AI quality roles Royson is researching — the transferable skill is eval literacy itself (metric definition, test-set design, failure-mode tracing), not the specific tool, since most eval tooling in the job market is Python-based and this project is .NET.
+7. **Eval literacy** — 🟡 Phase 5 built (AD-026): evaluators wired, LLM-as-judge running, scores rendered. **The learning half is still outstanding** — documenting a metric definition, test-set rationale, and a specific failure mode caught. That articulation, not the wiring, is what the job market actually tests for. Original framing: Phase 5 (AD-018): defining metrics, building a test set, automated grading via `Microsoft.Extensions.AI.Evaluation`. Directly relevant to "AI evals engineer" / AI quality roles Royson is researching — the transferable skill is eval literacy itself (metric definition, test-set design, failure-mode tracing), not the specific tool, since most eval tooling in the job market is Python-based and this project is .NET.
 
 ---
 
@@ -489,8 +528,8 @@ By building this app, Royson will directly experience:
 - [x] Claude via OpenRouter (SK OpenAI connector)
 - [x] SK Telemetry logging to console
 - [x] Verify path: message in → Claude explanation out *(manual with API key)*
-- [ ] React frontend with simple text input
-- [ ] End-to-end UI verification
+- [x] React frontend (React 19 + TS + Vite) with shared study material input and three mode panels
+- [x] End-to-end UI verification — all three modes exercised in the browser
 
 **Phase 2 — All three modes**
 - [x] QuizPlugin (`quiz/questions` + `quiz/evaluate`) — built, structurally verified, and functionally verified end-to-end
@@ -509,26 +548,48 @@ By building this app, Royson will directly experience:
 - [ ] Session history in PostgreSQL
 - [ ] UI polish
 
-**Phase 5 — Automated Evaluation (AD-018)**
-- [ ] Add `Microsoft.Extensions.AI.Evaluation` + `Microsoft.Extensions.AI.Evaluation.Quality` packages
-- [ ] Define a small eval test set per mode (study material + expected quality bar)
-- [ ] Wire Groundedness / Relevance / Completeness evaluators against Explain, Quiz, and Summarise outputs
-- [ ] Replace manual curl-and-eyeball verification with an automated, repeatable eval run
-- [ ] Document at least one failure mode each eval catches (learning goal — mirrors real eval-engineering practice)
+**Phase 5 — Automated Evaluation (AD-018, built 29 July — see AD-026)**
+- [x] Add `Microsoft.Extensions.AI.Evaluation` + `Microsoft.Extensions.AI.Evaluation.Quality` packages (10.8.0)
+- [x] Define a small eval test set per mode — `HardcodedEvalTestSetProvider`
+- [x] Wire Groundedness / Fluency / Coherence / RelevanceTruthAndCompleteness evaluators against all three modes
+- [x] `POST /api/dev/evals/run` + `GET /api/dev/evals/latest`, results cached in `InMemoryEvalResultStore`
+- [ ] Document at least one failure mode each eval catches (learning goal — mirrors real eval-engineering practice) **← still open, and the most valuable part for the career goal**
+- [ ] Consider the `dotnet aieval report` HTML report as a complement to the in-app view (AD-018)
 
-**Phase 6 — Developer Dashboard (AD-019, deferred)**
-- [ ] Telemetry capture layer (Infrastructure) — in-memory store of recent calls (mode, tokens, latency, timestamp)
-- [ ] `GET` endpoint for the frontend to poll recent telemetry
-- [ ] `POST /api/dev/evals/run` + `GET /api/dev/evals/latest` — trigger and retrieve eval results
-- [ ] Developer tab/route in the frontend, separate from student-facing screens
-- [ ] Not started until Phase 1 (React frontend) is done — see AD-019
+**Phase 6 — Developer Dashboard (AD-019 superseded, built 29 July — see AD-026)**
+- [x] Telemetry capture layer — `InMemoryTelemetryStore` (bounded ring, 200 entries) + `TelemetryFunctionInvocationFilter`
+- [x] `GET /api/dev/telemetry/recent` + `GET /api/dev/telemetry/summary`
+- [x] `POST /api/dev/evals/run` + `GET /api/dev/evals/latest` — trigger and retrieve eval results
+- [x] Developer route (`/dev`) in the frontend, separate from student-facing screens
+- [ ] **Fix cost constant** — currently ~100x too high (AD-026 defect 1); prompt drafted, not applied
+- [ ] **Separate eval traffic from tutoring traffic** in telemetry (AD-026 defect 2); prompt drafted, not applied
+- [ ] Add staleness indicator to the polling hook (AD-026)
 
 ---
 
 ## 12. HOW TO RUN WHAT EXISTS TODAY
 
+### Normal use — one command (AD-023)
+
 ```bash
-export OPENROUTER_API_KEY="your-key"
+studybuddy
+```
+
+A shell alias in `~/.zshrc` pointing at `./start.sh`, which starts the backend (port 5017) and frontend (port 5180) together. Then open **http://localhost:5180** in Chrome. Ctrl+C once stops both.
+
+If it reports a port is already in use, something is still running — most often a `dotnet run` that Cursor started while verifying a build. Free it and retry:
+
+```bash
+lsof -ti:5017 | xargs kill -9
+```
+
+Setup was one-time: `chmod +x start.sh`, plus the alias
+`alias studybuddy='cd "/Users/roysondsouza/AI Projects/STUDYBUDDY" && ./start.sh'` in `~/.zshrc`.
+
+### Backend only (for API testing)
+
+```bash
+export OPENROUTER_API_KEY="your-key"   # or rely on appsettings.Development.json
 cd backend/StudyBuddy.API
 dotnet run
 ```
@@ -574,7 +635,7 @@ Expect JSON `{ "summary": "..." }`. **Functionally verified 27 July 2026.**
 
 **Name:** StudyBuddy  
 **Purpose:** Personal AI tutor for Claude certification study  
-**Stack:** .NET 10 + (planned) React 19 + Semantic Kernel + Claude via OpenRouter + ElevenLabs  
+**Stack:** .NET 10 + React 19 + Semantic Kernel + Claude Haiku via OpenRouter + browser Web Speech API  
 **Repo:** Local git repo at `studybuddy` (separate from NOSYOR.M.I)  
 **Design:** Keep it simple and functional — learning tool first  
 **Standing coding rule:** Follow SOLID principles and clean coding structure throughout
@@ -585,13 +646,15 @@ Expect JSON `{ "summary": "..." }`. **Functionally verified 27 July 2026.**
 
 - [x] ~~Anthropic SDK direct vs OpenRouter~~ → **OpenRouter for Phase 1** (AD-002)
 - [x] ~~SQLite vs PostgreSQL~~ → **PostgreSQL via EF Core** (AD-006)
-- [ ] ElevenLabs voice selection — which voice fits a tutor persona?
-- [ ] PostgreSQL schema beyond `StudyMaterial` — what else to persist (sessions, quiz history)?
-- [ ] When to introduce SK Planner — after both Quiz + Summarise plugins exist, or earlier?
+- [x] ~~ElevenLabs voice selection — which voice fits a tutor persona?~~ → **Moot.** ElevenLabs removed entirely (AD-024). Free tier capped at ~10k chars/month. Alice (`Xb7hH8MSUJpSbSDYk0k2`, "Clear, Engaging Educator") was the chosen premade voice while it was live.
+- [ ] In-app TTS voice quality — browser voices are flat; Siri voices are blocked from browsers by Apple. Workaround in use (macOS Speak selection). Open path: Kokoro/transformers.js local neural TTS (AD-022).
+- [ ] PostgreSQL schema beyond `StudyMaterial` — what else to persist (sessions, quiz history)? **Lower priority:** Royson confirmed 29 July he's fine pasting material each session, so persistence is not currently wanted (AD-006 scaffolding stays unused).
+- [x] ~~When to introduce SK Planner — after both Quiz + Summarise plugins exist, or earlier?~~ → **After.** Both are built and verified; Planner is now the next SK milestone whenever he chooses to pick it up.
 - [x] ~~GitHub connectivity for AI context~~ → **Resolved by local folder mount in Cowork** (AD-011). GitHub Desktop still used for version control separately.
 - [ ] GitHub remote / project board setup (for version control and backups — separate from AI context)
-- [ ] Whether to switch from Haiku to a larger Claude model for Quiz evaluation quality — now testable since QuizPlugin is live
-- [ ] Secrets access boundary — switch `OPENROUTER_API_KEY` from `appsettings.Development.json` to `dotnet user-secrets` or shell env var (AD-014)
+- [ ] Whether to switch from Haiku to a larger Claude model for Quiz evaluation quality — now testable since QuizPlugin is live. Note: Haiku's evaluation quality tested well on 27 July (correctly caught both deliberately wrong answers), so this is optional rather than needed.
+- [ ] Secrets access boundary — switch `OPENROUTER_API_KEY` from `appsettings.Development.json` to `dotnet user-secrets` or shell env var (AD-014). Still open; the key currently lives in the gitignored Development settings file.
+- [ ] Certificate revocation workaround (AD-025) is Development-only — if the app is ever deployed, the network-level OCSP/CRL blocking must be solved properly rather than carrying the workaround into production.
 
 ---
 
@@ -619,12 +682,26 @@ Cowork will read `docs/STUDYBUDDY-MEMORY.md` directly from the local folder — 
 
 **Remember to sync:** If Cowork updated this local file in the previous session, copy-paste the updated content into the cloud project knowledge to keep both versions in sync.
 
-### Sensible next steps (pick one):
-1. **Scaffold the React frontend (student-facing)** — Phase 1 remaining item, and the priority Royson chose: see the app work end-to-end for its primary purpose before adding any developer tooling
-2. SK Planner — route by intent across ExplainPlugin, QuizPlugin, SummarisePlugin (all three are now built and verified)
-3. Phase 5 — Automated Evaluation (AD-018): add `Microsoft.Extensions.AI.Evaluation`, build a small eval test set, wire quality evaluators against the three modes
-4. Decide and implement the secrets access boundary (AD-014 — `dotnet user-secrets` vs shell env var)
-5. Implement ElevenLabs TTS after text responses
-6. Phase 6 — Developer Dashboard (AD-019) — do not start before Phase 1 is done
+### Current state as of 29 July 2026
+
+**The app is complete and in daily use for its primary purpose.** All three modes (Explain, Quiz, Summarise) are built and functionally verified end-to-end. The React frontend works, one shared study material field feeds all three modes, question/topic inputs are optional, and read-aloud works in-browser. Start it with `studybuddy`. Nothing blocks use.
+
+**Additionally built 29 July (AD-026):** the Developer Dashboard at `/dev` — live telemetry (4s polling, in-memory, zero cost) plus on-demand evaluation using `Microsoft.Extensions.AI.Evaluation`. This covers Phases 5 and 6, built out of sequence in a separate Cursor session.
+
+### START HERE NEXT SESSION — one task, already scoped
+
+**Apply the drafted fix for the two AD-026 defects.** A complete Cursor prompt was drafted 29 July but **not yet applied**:
+1. Cost constant is ~100x too high — move rates to `OpenRouterOptions` config, split input/output pricing
+2. Eval traffic is recorded as tutoring traffic — add `IEvalExecutionContext` (AsyncLocal), stamp `TelemetryEntry.Source`, report the two separately in `TelemetrySummary`
+Plus a staleness indicator in `useTelemetryPolling`.
+
+Royson wanted a fresh start on this and to **work through it step by step, learning the traceability and evaluation concepts as we go** — not just applying it blind. Treat it as a teaching pass, not only a code change.
+
+### Then, in rough priority order:
+1. **Document eval failure modes** (Phase 5 remaining item) — pick a metric, describe the test set, name a specific failure it caught. This is the single most career-relevant deliverable for the AI-evals roles Royson is targeting.
+2. **SK Planner** (Phase 2) — route by intent across the three plugins instead of clicking a tab. The remaining Semantic Kernel learning milestone.
+3. **Secrets boundary** (AD-014) — move `OPENROUTER_API_KEY` to `dotnet user-secrets` or a shell env var.
+4. **In-app TTS quality** (AD-022) — Kokoro/transformers.js local neural TTS, if the macOS Speak-selection workaround stops being good enough.
+5. **Docker Compose** (AD-023) — when deploying, or if PostgreSQL is ever wired up.
 
 Claude will read this file and pick up with no context loss.
