@@ -1,7 +1,7 @@
 # STUDYBUDDY — Project Memory & Architecture Plan
 > This file is the context anchor for all future sessions on this project.
 > Start every new chat by sharing this file so no context is lost.
-> Last updated: 29 July 2026
+> Last updated: 30 July 2026
 
 ---
 
@@ -67,7 +67,8 @@
 | Text-to-Speech | Browser Web Speech API (`window.speechSynthesis`) | Reads Claude's responses aloud, client-side only | ✅ Built — voice picker + speed control. ElevenLabs was built then fully removed (AD-021, AD-024) |
 | Monitoring | SK Telemetry + OpenTelemetry Console exporter | Logs every Claude call in dev | ✅ Wired |
 | Dev observability | `IFunctionInvocationFilter` → in-memory store → `/dev` dashboard | Live token/latency/cost view, eval and tutoring traffic separated | ✅ Built (AD-026), defects fixed (AD-027) |
-| Evaluation | `Microsoft.Extensions.AI.Evaluation` + `.Quality` 10.8.0 | LLM-as-judge quality scoring per mode, on demand | ✅ Built (AD-026) |
+| Evaluation | `Microsoft.Extensions.AI.Evaluation` + `.Quality` + `.Reporting` 10.8.0 | LLM-as-judge scoring per mode with per-case reasoning; disk reports + history | ✅ Built and verified (AD-026, AD-029) |
+| Eval reporting CLI | `Microsoft.Extensions.AI.Evaluation.Console` (global tool, command is `aieval`) | Interactive HTML drill-down report from `eval-reports/` | ✅ Installed and working (AD-029) |
 | Database | PostgreSQL via EF Core (`Npgsql.EntityFrameworkCore.PostgreSQL`) | Study material + session history | ⏳ DbContext scaffolded; not actively used yet |
 | Secrets | Env vars + `appsettings.Development.json` (gitignored) | Local keys never committed | ✅ Configured |
 | Local dev startup | `start.sh` + `studybuddy` shell alias | One command starts backend + frontend | ✅ Built (AD-023) |
@@ -488,7 +489,7 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 
 ---
 
-### AD-028 — OPEN: three eval gaps blocking the Phase 5 learning goal (Cursor prompt to be drafted 30 July)
+### AD-028 — three eval gaps blocking the Phase 5 learning goal *(RESOLVED 30 July — see AD-029)*
 Royson asked on 29 July whether eval runs work as intended and why he sees no report. Verdict: **the run itself works correctly** — button → `POST /api/dev/evals/run` → `RunAsync` (inside the eval scope) → for each test case, call the real tutoring service, score the output with the `CompositeEvaluator`, average per mode → save → render score bars. Test set is 11 cases (4 Explain, 4 Quiz, 3 Summarise), all grounded in SOLID / dependency-injection material, so a full run is roughly 25 LLM calls — hence correctly button-gated.
 
 **But three gaps exist:**
@@ -502,6 +503,45 @@ Royson asked on 29 July whether eval runs work as intended and why he sees no re
 **Correction to AD-018:** that entry described the `dotnet aieval report` HTML report as though it were part of the plan being implemented. It never was — the Reporting package was never added. What exists today is averaged score bars in the dashboard only.
 
 **Agreed order for 30 July:** (1) draft + apply the fix prompt, (2) then walk through the numbers together — what each metric measures, how LLM-as-judge works, how to read the scores.
+
+---
+
+### AD-029 — All three eval gaps closed; reporting live and functionally verified (30 July 2026)
+Prompt drafted in a separate chat, applied by Cursor, then structurally verified in Cowork. `dotnet build` and `npm run build` both succeed. Tutoring plugins, services, and prompt templates untouched.
+
+**Gap 1 — per-case results now retained:**
+- `EvalTestCase` gained a `Name`; fixtures use readable IDs (`Explain-SRP`, `Explain-OCP`, `Explain-DI`, `Explain-DIP-DI`, `Quiz-SRP`, `Quiz-LSP`, `Quiz-DI`, `Quiz-ISP`, `Summarise-SOLID`, `Summarise-DI`, `Summarise-SOLID-why`)
+- New `EvalCaseResult(CaseName, Metrics)`; `ModeEvalScores` now carries both `Scores` (mode averages, drives the bars) and `CaseResults` (per-case detail)
+
+**Gap 2 — evaluator reasoning now captured:**
+- New `EvalMetricResult(double Value, string? Reasoning)`
+- `TryCapture` reads `metric.Reason` alongside `metric.Value`, nulling blanks. Mode averages derive from the same per-case values — no double scoring.
+
+**Gap 3 — reporting and durable history:**
+- Added `Microsoft.Extensions.AI.Evaluation.Reporting` 10.8.0
+- New `IEvalReportWriter` / `DiskEvalReportWriter` — evaluation now runs through `DiskBasedReportingConfiguration` + per-scenario `ScenarioRun`s, writing to `eval-reports/` (`cache/` + `results/`). `enableResponseCaching: true`, so repeat runs on unchanged cases reuse cached judge responses instead of paying again.
+- `InMemoryEvalResultStore` **deleted**, replaced by `FileEvalResultStore` writing timestamped JSON to `eval-history/` — eval results now survive backend restarts
+- `GET /api/dev/evals/history` added; `/run` and `/latest` response shapes unchanged
+- Frontend: collapsible per-case breakdown under each mode, showing metric scores and reasoning. History UI deliberately deferred.
+
+**DI lifetimes matter here:** `IEvalReportWriter` is registered **Scoped**, so each "Run evals" click gets a fresh `executionName` timestamp. Registering it Singleton would collapse every run into one execution and break the report's historical trend view.
+
+**Functional verification (30 July, from the dashboard):** an 11-case run completed successfully. Eval cost displayed **$0.0171** — confirming the AD-027 cost fix works and is now realistic. The Source column correctly showed `Eval` for all eval traffic and `Tutoring` for the one real call, confirming the AD-027 separation works. Scores: Explain (Groundedness 4.75, Relevance 5.00, Completeness 4.25, Fluency 4.00, Coherence 4.00, Truthfulness 5.00); Quiz (5.00 / 5.00 / 4.00 / 4.00 / 4.25 / 5.00); Summarise (4.67 / 5.00 / 5.00 / 4.00 / 4.33 / 5.00).
+
+**HTML report generated and confirmed working** — 854KB `report.html` at repo root.
+
+**CLI gotcha, documented so it doesn't recur:** the tool is invoked as **`aieval`**, NOT `dotnet aieval`. The `dotnet <cmd>` form only works for executables named `dotnet-<cmd>`; `dotnet tool list --global` shows the command as plain `aieval`. Correct sequence:
+```bash
+dotnet tool install --global Microsoft.Extensions.AI.Evaluation.Console
+echo 'export PATH="$PATH:$HOME/.dotnet/tools"' >> ~/.zshrc && source ~/.zshrc   # if not found
+cd "/Users/roysondsouza/AI Projects/STUDYBUDDY"
+aieval report --path eval-reports --output report.html --open
+```
+The doc comment in `DiskEvalReportWriter.cs` still says `dotnet aieval report` — **minor open fix**, should be corrected to `aieval report`.
+
+**Gitignore:** `eval-reports/` and `eval-history/` added. **`report.html` still needs adding** — it is 854KB of regenerable output sitting untracked at the repo root and would otherwise be committed (same class of mistake as the `bin`/`obj` issue).
+
+**First observation worth investigating (Phase 5 learning goal):** Fluency scored **exactly 4.00 across all three modes**, the lowest and suspiciously uniform metric. Open question: is the judge flagging something real about the tutoring prose, or is 4 simply where that evaluator lands for competent-but-unexceptional writing? The per-case reasoning now captured can answer this from evidence — and answering it *is* the Phase 5 deliverable.
 
 ---
 
@@ -588,9 +628,14 @@ By building this app, Royson will directly experience:
 - [x] Add `Microsoft.Extensions.AI.Evaluation` + `Microsoft.Extensions.AI.Evaluation.Quality` packages (10.8.0)
 - [x] Define a small eval test set per mode — `HardcodedEvalTestSetProvider`
 - [x] Wire Groundedness / Fluency / Coherence / RelevanceTruthAndCompleteness evaluators against all three modes
-- [x] `POST /api/dev/evals/run` + `GET /api/dev/evals/latest`, results cached in `InMemoryEvalResultStore`
-- [ ] Document at least one failure mode each eval catches (learning goal — mirrors real eval-engineering practice) **← still open, and the most valuable part for the career goal**
-- [ ] Consider the `dotnet aieval report` HTML report as a complement to the in-app view (AD-018)
+- [x] `POST /api/dev/evals/run` + `GET /api/dev/evals/latest` + `GET /api/dev/evals/history`
+- [x] Per-case results retained with case names (AD-029)
+- [x] Evaluator reasoning captured, not just scores (AD-029)
+- [x] `Microsoft.Extensions.AI.Evaluation.Reporting` + `DiskEvalReportWriter` → `eval-reports/`; HTML report generated and verified via `aieval report` (AD-029)
+- [x] Durable history — `FileEvalResultStore` → `eval-history/`, survives restarts (AD-029)
+- [ ] Add `report.html` to `.gitignore` (854KB generated artifact, currently untracked at repo root)
+- [ ] Fix doc comment in `DiskEvalReportWriter.cs`: `dotnet aieval report` → `aieval report`
+- [ ] **Document at least one failure mode the evals catch** — the remaining Phase 5 deliverable and the most career-relevant artifact. Starting thread: why is Fluency exactly 4.00 across all three modes? (AD-029)
 
 **Phase 6 — Developer Dashboard (AD-019 superseded, built 29 July — see AD-026)**
 - [x] Telemetry capture layer — `InMemoryTelemetryStore` (bounded ring, 200 entries) + `TelemetryFunctionInvocationFilter`
@@ -621,6 +666,24 @@ lsof -ti:5017 | xargs kill -9
 
 Setup was one-time: `chmod +x start.sh`, plus the alias
 `alias studybuddy='cd "/Users/roysondsouza/AI Projects/STUDYBUDDY" && ./start.sh'` in `~/.zshrc`.
+
+### Developer Dashboard and evaluation
+
+Open **http://localhost:5180/dev** — live telemetry (4s polling, free in-memory reads) plus on-demand evaluation. "Run evals" makes ~25 real LLM calls across 11 test cases and costs roughly $0.02.
+
+To view the full interactive eval report (per-case scores, evaluator reasoning, historical trends):
+
+```bash
+# one-time setup
+dotnet tool install --global Microsoft.Extensions.AI.Evaluation.Console
+echo 'export PATH="$PATH:$HOME/.dotnet/tools"' >> ~/.zshrc && source ~/.zshrc
+
+# after any "Run evals" click
+cd "/Users/roysondsouza/AI Projects/STUDYBUDDY"
+aieval report --path eval-reports --output report.html --open
+```
+
+⚠️ The command is **`aieval`**, not `dotnet aieval` — see AD-029.
 
 ### Backend only (for API testing)
 
@@ -722,15 +785,18 @@ Cowork will read `docs/STUDYBUDDY-MEMORY.md` directly from the local folder — 
 
 **The app is complete and in daily use for its primary purpose.** All three modes (Explain, Quiz, Summarise) are built and functionally verified end-to-end. The React frontend works, one shared study material field feeds all three modes, question/topic inputs are optional, and read-aloud works in-browser. Start it with `studybuddy`. Nothing blocks use.
 
-**Additionally built 29 July (AD-026):** the Developer Dashboard at `/dev` — live telemetry (4s polling, in-memory, zero cost) plus on-demand evaluation using `Microsoft.Extensions.AI.Evaluation`. This covers Phases 5 and 6, built out of sequence in a separate Cursor session.
+**Additionally built 29–30 July (AD-026, AD-027, AD-029):** the Developer Dashboard at `/dev` — live telemetry (4s polling, in-memory, zero cost, eval traffic separated from tutoring traffic) plus a complete on-demand evaluation layer: LLM-as-judge scoring across 11 test cases, per-case results with evaluator reasoning, durable history on disk, and an interactive HTML report via the `aieval` CLI. This covers Phases 5 and 6.
 
-### START HERE NEXT SESSION — eval reporting gaps, then the teaching pass
+### START HERE NEXT SESSION — the teaching pass (all building is done)
 
-**A scheduled reminder is set for Thursday 30 July, 9:00 AM (Chicago/CDT)** — task ID `studybuddy-eval-reporting-prompt`.
+**The eval layer is complete and verified** (AD-026, AD-027, AD-028 → AD-029). Reports generate, per-case reasoning is captured, history persists. Nothing is broken and nothing needs building.
 
-**Task 1 — draft and apply a Cursor prompt closing three eval gaps found 29 July (see AD-028).** Do this before the teaching pass, because gaps 1 and 2 structurally block the Phase 5 learning goal.
+**Two small cleanups first (2 minutes):**
+- Add `report.html` to `.gitignore` — 854KB generated artifact currently untracked at repo root
+- Fix the doc comment in `DiskEvalReportWriter.cs`: `dotnet aieval report` → `aieval report`
 
-**Task 2 — then the teaching pass below.**
+**Then the main event — the teaching pass Royson has been waiting for.**
+He deferred this twice to finish building; it is now the actual priority. Concrete starting point: run `aieval report --path eval-reports --output report.html --open`, open it together, and investigate **why Fluency scored exactly 4.00 across all three modes** using the per-case reasoning. That single question naturally covers what a metric is, how LLM-as-judge works, why scores cluster, and how to distinguish a real quality signal from an evaluator artifact — and produces the Phase 5 deliverable as a by-product.
 
 **The dashboard is now correct and complete** (AD-026 built, AD-027 defects fixed). Nothing is broken.
 
