@@ -34,6 +34,12 @@ appsettings.Development.json
 **/appsettings.Development.json
 
 # ==========================================
+# Eval local output (not committed)
+# ==========================================
+eval-reports/
+eval-history/
+
+# ==========================================
 # OS Files
 # ==========================================
 .DS_Store

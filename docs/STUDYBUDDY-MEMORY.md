@@ -488,6 +488,23 @@ AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiag
 
 ---
 
+### AD-028 — OPEN: three eval gaps blocking the Phase 5 learning goal (Cursor prompt to be drafted 30 July)
+Royson asked on 29 July whether eval runs work as intended and why he sees no report. Verdict: **the run itself works correctly** — button → `POST /api/dev/evals/run` → `RunAsync` (inside the eval scope) → for each test case, call the real tutoring service, score the output with the `CompositeEvaluator`, average per mode → save → render score bars. Test set is 11 cases (4 Explain, 4 Quiz, 3 Summarise), all grounded in SOLID / dependency-injection material, so a full run is roughly 25 LLM calls — hence correctly button-gated.
+
+**But three gaps exist:**
+
+1. **Per-case results are discarded.** `EvaluateModeAsync` sums each test case's scores into running totals and returns only per-mode averages. If Explain scores 3.2 on Groundedness, there is no way to tell which of the four cases dragged it down.
+2. **Evaluator reasoning is discarded.** `TryAccumulate` reads only `metric.Value`; the diagnostics explaining *why* a score was assigned are dropped.
+3. **No report, and no history.** `Microsoft.Extensions.AI.Evaluation.Reporting` is **not installed** — only `Evaluation` and `Evaluation.Quality`. Reporting is what caches runs to disk and enables `dotnet aieval report --output report.html --open` with drill-down and historical trends. Separately, `InMemoryEvalResultStore` holds a single result in memory, so all eval history dies on backend restart — which defeats regression testing (comparing scores before/after a prompt change).
+
+**Why 1 and 2 are the priority:** they structurally prevent the Phase 5 deliverable "document a specific failure mode the eval caught" — the single most career-relevant artifact for the AI-evals roles Royson is targeting. The code currently cannot say *which* case failed or *why*.
+
+**Correction to AD-018:** that entry described the `dotnet aieval report` HTML report as though it were part of the plan being implemented. It never was — the Reporting package was never added. What exists today is averaged score bars in the dashboard only.
+
+**Agreed order for 30 July:** (1) draft + apply the fix prompt, (2) then walk through the numbers together — what each metric measures, how LLM-as-judge works, how to read the scores.
+
+---
+
 ## 8. THE TTS LAYER — BROWSER WEB SPEECH API
 
 **Current implementation (client-side only, no backend involvement):**
@@ -707,7 +724,13 @@ Cowork will read `docs/STUDYBUDDY-MEMORY.md` directly from the local folder — 
 
 **Additionally built 29 July (AD-026):** the Developer Dashboard at `/dev` — live telemetry (4s polling, in-memory, zero cost) plus on-demand evaluation using `Microsoft.Extensions.AI.Evaluation`. This covers Phases 5 and 6, built out of sequence in a separate Cursor session.
 
-### START HERE NEXT SESSION — a teaching pass, not a code change
+### START HERE NEXT SESSION — eval reporting gaps, then the teaching pass
+
+**A scheduled reminder is set for Thursday 30 July, 9:00 AM (Chicago/CDT)** — task ID `studybuddy-eval-reporting-prompt`.
+
+**Task 1 — draft and apply a Cursor prompt closing three eval gaps found 29 July (see AD-028).** Do this before the teaching pass, because gaps 1 and 2 structurally block the Phase 5 learning goal.
+
+**Task 2 — then the teaching pass below.**
 
 **The dashboard is now correct and complete** (AD-026 built, AD-027 defects fixed). Nothing is broken.
 

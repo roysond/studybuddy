@@ -238,6 +238,45 @@ export function DeveloperDashboard() {
                     );
                   })}
                 </ul>
+
+                {(scores.caseResults?.length ?? 0) > 0 ? (
+                  <details className="eval-cases">
+                    <summary className="eval-cases__summary">
+                      Per-case breakdown ({scores.caseResults.length})
+                    </summary>
+                    <ul className="eval-case-list">
+                      {scores.caseResults.map((caseResult) => (
+                        <li key={caseResult.caseName} className="eval-case">
+                          <p className="eval-case__name">{caseResult.caseName}</p>
+                          <ul className="eval-case-metrics">
+                            {METRIC_ORDER.map((metric) => {
+                              const metricResult = caseResult.metrics[metric];
+                              if (!metricResult) {
+                                return null;
+                              }
+
+                              return (
+                                <li key={metric} className="eval-case-metric">
+                                  <div className="eval-case-metric__header">
+                                    <span>{metric}</span>
+                                    <span className="eval-case-metric__value">
+                                      {metricResult.value.toFixed(2)}
+                                    </span>
+                                  </div>
+                                  {metricResult.reasoning ? (
+                                    <p className="eval-case-metric__reasoning">
+                                      {metricResult.reasoning}
+                                    </p>
+                                  ) : null}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : null}
               </div>
             ))}
           </div>

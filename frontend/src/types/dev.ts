@@ -18,8 +18,19 @@ export interface TelemetryEntry {
   source: string;
 }
 
+export interface EvalMetricResult {
+  value: number;
+  reasoning: string | null;
+}
+
+export interface EvalCaseResult {
+  caseName: string;
+  metrics: Record<string, EvalMetricResult>;
+}
+
 export interface ModeEvalScores {
   scores: Record<string, number>;
+  caseResults: EvalCaseResult[];
 }
 
 export interface EvalRunResult {

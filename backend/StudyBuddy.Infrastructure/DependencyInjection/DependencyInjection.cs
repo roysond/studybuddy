@@ -48,8 +48,9 @@ public static class DependencyInjection
         services.AddSingleton<IFunctionInvocationFilter, TelemetryFunctionInvocationFilter>();
 
         // Evaluation half — on-demand only, independent of telemetry.
-        services.AddSingleton<IEvalResultStore, InMemoryEvalResultStore>();
+        services.AddSingleton<IEvalResultStore, FileEvalResultStore>();
         services.AddSingleton<IEvalTestSetProvider, HardcodedEvalTestSetProvider>();
+        services.AddScoped<IEvalReportWriter, DiskEvalReportWriter>();
         services.AddScoped<IEvalRunnerService, EvalRunnerService>();
     }
 }

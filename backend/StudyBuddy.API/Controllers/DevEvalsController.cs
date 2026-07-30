@@ -51,4 +51,12 @@ public sealed class DevEvalsController : ControllerBase
 
         return Ok(latest);
     }
+
+    [HttpGet("history")]
+    [ProducesResponseType(typeof(IReadOnlyList<EvalRunResult>), StatusCodes.Status200OK)]
+    public ActionResult<IReadOnlyList<EvalRunResult>> GetHistory([FromQuery] int count = 20)
+    {
+        var history = _evalResultStore.GetHistory(count);
+        return Ok(history);
+    }
 }

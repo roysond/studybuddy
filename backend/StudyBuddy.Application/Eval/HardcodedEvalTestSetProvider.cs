@@ -35,25 +35,26 @@ public sealed class HardcodedEvalTestSetProvider : IEvalTestSetProvider
 
     public IReadOnlyList<EvalTestCase> GetExplainCases() =>
     [
-        new EvalTestCase(SolidPrinciplesMaterial, "What is the Single Responsibility Principle?"),
-        new EvalTestCase(SolidPrinciplesMaterial, "Explain the Open/Closed Principle in plain language."),
-        new EvalTestCase(DependencyInjectionMaterial, "What is dependency injection?"),
-        new EvalTestCase(SolidPrinciplesMaterial, "How does Dependency Inversion relate to dependency injection?")
+        new EvalTestCase("Explain-SRP", SolidPrinciplesMaterial, "What is the Single Responsibility Principle?"),
+        new EvalTestCase("Explain-OCP", SolidPrinciplesMaterial, "Explain the Open/Closed Principle in plain language."),
+        new EvalTestCase("Explain-DI", DependencyInjectionMaterial, "What is dependency injection?"),
+        new EvalTestCase("Explain-DIP-DI", SolidPrinciplesMaterial, "How does Dependency Inversion relate to dependency injection?")
     ];
 
     public IReadOnlyList<EvalTestCase> GetQuizCases() =>
     [
-        new EvalTestCase(SolidPrinciplesMaterial, "Single Responsibility Principle"),
-        new EvalTestCase(SolidPrinciplesMaterial, "Liskov Substitution Principle"),
-        new EvalTestCase(DependencyInjectionMaterial, "Dependency injection"),
-        new EvalTestCase(SolidPrinciplesMaterial, "Interface Segregation")
+        new EvalTestCase("Quiz-SRP", SolidPrinciplesMaterial, "Single Responsibility Principle"),
+        new EvalTestCase("Quiz-LSP", SolidPrinciplesMaterial, "Liskov Substitution Principle"),
+        new EvalTestCase("Quiz-DI", DependencyInjectionMaterial, "Dependency injection"),
+        new EvalTestCase("Quiz-ISP", SolidPrinciplesMaterial, "Interface Segregation")
     ];
 
     public IReadOnlyList<EvalTestCase> GetSummariseCases() =>
     [
-        new EvalTestCase(SolidPrinciplesMaterial),
-        new EvalTestCase(DependencyInjectionMaterial),
+        new EvalTestCase("Summarise-SOLID", SolidPrinciplesMaterial),
+        new EvalTestCase("Summarise-DI", DependencyInjectionMaterial),
         new EvalTestCase(
+            "Summarise-SOLID-why",
             SolidPrinciplesMaterial + "\n\nWhy it matters: following SOLID reduces coupling, makes unit testing practical, and keeps features cheaper to change over time.")
     ];
 }

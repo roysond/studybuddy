@@ -407,6 +407,62 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 
+.eval-cases {
+  margin-top: 0.85rem;
+}
+
+.eval-cases__summary {
+  cursor: pointer;
+  color: #57534e;
+  font-size: 0.9rem;
+}
+
+.eval-case-list {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.eval-case {
+  padding: 0.65rem 0 0;
+  border-top: 1px solid #e7e5e4;
+}
+
+.eval-case__name {
+  margin: 0 0 0.45rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.eval-case-metrics {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.eval-case-metric__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: #44403c;
+}
+
+.eval-case-metric__value {
+  font-variant-numeric: tabular-nums;
+}
+
+.eval-case-metric__reasoning {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: #78716c;
+  line-height: 1.4;
+}
+
 @media (max-width: 640px) {
   .panel__header {
     flex-direction: column;
